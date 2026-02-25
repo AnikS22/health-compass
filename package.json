@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "build": "npm run vercel-build && rm -rf public && cp -R apps/web-student/out public",
+    "build:dev": "vite build --mode development",
     "build:all": "npm run build --workspaces --if-present",
     "dev": "npm run dev --workspaces --if-present",
     "dev:all": "npm run dev --workspaces --if-present",
