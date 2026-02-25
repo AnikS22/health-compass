@@ -1,22 +1,76 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import StepRunner from "../components/steps/StepRunner";
-import { sampleSteps, sampleLessonTitle } from "../data/sampleLesson";
-import type { StepResponse } from "../components/steps/types";
-
-// Mock peer distribution for the peer compare step
-const mockDistributions: Record<string, Array<{ option_id: string; count: number; percentage: number }>> = {
-  "step-6": [
-    { option_id: "a", count: 4, percentage: 15 },
-    { option_id: "b", count: 7, percentage: 26 },
-    { option_id: "c", count: 10, percentage: 37 },
-    { option_id: "d", count: 6, percentage: 22 },
-  ],
-};
+import type { StepBlock, StepResponse, Hint } from "../components/steps/types";
 
 export default function LessonPreview() {
   const navigate = useNavigate();
+  const [steps, setSteps] = useState<StepBlock[]>([]);
+  const [lessonTitle, setLessonTitle] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadLesson() {
+      // Fetch the latest published lesson version with our 4 step types
+      const { data: versions, error: vErr } = await supabase
+        .from("lesson_versions")
+        .select("id, lesson_id, lessons!inner(title)")
+        .eq("publish_status", "published")
+        .order("published_at", { ascending: false })
+        .limit(10);
+
+      if (vErr || !versions?.length) {
+        setError("No published lessons found.");
+        setLoading(false);
+        return;
+      }
+
+      // Find first version that has our interactive block types
+      let chosenVersion: (typeof versions)[0] | null = null;
+      let blocks: StepBlock[] = [];
+
+      for (const v of versions) {
+        const { data: bData } = await supabase
+          .from("lesson_blocks")
+          .select("id, sequence_no, block_type, title, body, config, hints, is_gate, mastery_rules")
+          .eq("lesson_version_id", v.id)
+          .in("block_type", ["concept_reveal", "micro_challenge", "reasoning_response", "peer_compare"])
+          .order("sequence_no", { ascending: true });
+
+        if (bData && bData.length > 0) {
+          chosenVersion = v;
+          blocks = bData.map((b) => ({
+            id: b.id,
+            sequence_no: b.sequence_no,
+            block_type: b.block_type as StepBlock["block_type"],
+            title: b.title,
+            body: b.body,
+            config: (b.config ?? {}) as Record<string, unknown>,
+            hints: (b.hints ?? []) as unknown as Hint[],
+            is_gate: b.is_gate,
+            mastery_rules: (b.mastery_rules ?? {}) as Record<string, unknown>,
+          }));
+          break;
+        }
+      }
+
+      if (!chosenVersion || blocks.length === 0) {
+        setError("No interactive lesson blocks found.");
+        setLoading(false);
+        return;
+      }
+
+      const lesson = chosenVersion.lessons as unknown as { title: string };
+      setLessonTitle(lesson.title);
+      setSteps(blocks);
+      setLoading(false);
+    }
+
+    loadLesson();
+  }, []);
 
   const handleStepComplete = useCallback((stepId: string, response: StepResponse) => {
     console.log("Step completed:", stepId, response);
@@ -25,6 +79,25 @@ export default function LessonPreview() {
   const handleLessonComplete = useCallback(() => {
     console.log("Lesson complete!");
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground text-sm animate-pulse">Loading lesson…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <p className="text-muted-foreground">{error}</p>
+          <button onClick={() => navigate(-1)} className="text-sm text-primary hover:underline">Go back</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -41,11 +114,10 @@ export default function LessonPreview() {
       </div>
       <div className="py-8">
         <StepRunner
-          steps={sampleSteps}
-          lessonTitle={sampleLessonTitle}
+          steps={steps}
+          lessonTitle={lessonTitle}
           onStepComplete={handleStepComplete}
           onLessonComplete={handleLessonComplete}
-          peerDistributions={mockDistributions}
         />
       </div>
     </div>
