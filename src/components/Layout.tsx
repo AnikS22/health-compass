@@ -41,10 +41,15 @@ const adminNav = [
   { to: "/reports", icon: BarChart3, label: "Reports" },
 ];
 
+const curriculumAdminNav = [
+  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/admin/curriculum", icon: BookOpen, label: "Curriculum" },
+];
+
 export default function Layout() {
   const { user, role, signOut } = useAuth();
 
-  const navItems = role === "student" ? studentNav : role === "ethics_admin" ? adminNav : role === "teacher" ? teacherNav : teacherNav;
+  const navItems = role === "student" ? studentNav : role === "ethics_admin" ? adminNav : role === "curriculum_admin" ? curriculumAdminNav : role === "teacher" ? teacherNav : teacherNav;
 
   return (
     <div className="flex h-screen">
@@ -60,7 +65,7 @@ export default function Layout() {
                 The Ethics Lab
               </h1>
               <p className="text-[11px] text-muted-foreground font-medium">
-                {role === "student" ? "Student" : role === "teacher" ? "Teacher" : role === "ethics_admin" ? "Admin" : "Portal"} Portal
+                {role === "student" ? "Student" : role === "teacher" ? "Teacher" : role === "ethics_admin" ? "Admin" : role === "curriculum_admin" ? "Curriculum" : "Portal"} Portal
               </p>
             </div>
           </div>
