@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Radio, Users } from "lucide-react";
+import { ArrowLeft, Radio } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import StepRunner from "../components/steps/StepRunner";
-import type { StepConfig } from "../components/steps/types";
+import type { StepBlock, Hint } from "../components/steps/types";
 
 type LiveEvent = {
   event_type: string;
@@ -16,7 +16,7 @@ export default function StudentLiveView() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session");
 
-  const [steps, setSteps] = useState<StepConfig[]>([]);
+  const [steps, setSteps] = useState<StepBlock[]>([]);
   const [lessonTitle, setLessonTitle] = useState("Live Session");
   const [activeIndex, setActiveIndex] = useState(0);
   const [locked, setLocked] = useState(false);
@@ -27,7 +27,6 @@ export default function StudentLiveView() {
     loadSession();
   }, [sessionId]);
 
-  // Listen for teacher events in real-time
   useEffect(() => {
     if (!sessionId) return;
     const channel = supabase
@@ -77,10 +76,9 @@ export default function StudentLiveView() {
       return;
     }
 
-    // Load blocks
     const { data: blocks } = await supabase
       .from("lesson_blocks")
-      .select("id, sequence_no, block_type, title, body, config, hints, is_gate")
+      .select("id, sequence_no, block_type, title, body, config, hints, is_gate, mastery_rules")
       .eq("lesson_version_id", session.lesson_version_id)
       .order("sequence_no", { ascending: true });
 
@@ -88,17 +86,18 @@ export default function StudentLiveView() {
       setSteps(
         blocks.map((b) => ({
           id: b.id,
-          type: b.block_type as StepConfig["type"],
-          title: b.title ?? `Step ${b.sequence_no}`,
-          body: b.body ?? "",
-          config: b.config as Record<string, unknown>,
-          hints: (b.hints as string[]) ?? [],
-          isGate: b.is_gate,
+          sequence_no: b.sequence_no,
+          block_type: b.block_type as StepBlock["block_type"],
+          title: b.title,
+          body: b.body,
+          config: (b.config ?? {}) as Record<string, unknown>,
+          hints: (b.hints ?? []) as unknown as Hint[],
+          is_gate: b.is_gate,
+          mastery_rules: (b.mastery_rules ?? {}) as Record<string, unknown>,
         }))
       );
     }
 
-    // Load lesson title
     const { data: lv } = await supabase
       .from("lesson_versions")
       .select("lesson_id")
@@ -113,7 +112,6 @@ export default function StudentLiveView() {
       if (lesson) setLessonTitle(lesson.title);
     }
 
-    // Replay existing events to compute current index
     const { data: events } = await supabase
       .from("live_session_events")
       .select("event_type, event_payload, created_at")
