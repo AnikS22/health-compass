@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageSchools from "./pages/admin/ManageSchools";
 import ManageTeachers from "./pages/admin/ManageTeachers";
 import ManageCurriculum from "./pages/admin/ManageCurriculum";
+import ManageUsers from "./pages/admin/ManageUsers";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/admin/schools" element={<ManageSchools />} />
           <Route path="/admin/teachers" element={<ManageTeachers />} />
           <Route path="/admin/curriculum" element={<ManageCurriculum />} />
+          <Route path="/admin/users" element={<ManageUsers />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
         </Route>
         <Route path="*" element={<NotFound />} />
