@@ -3,25 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
+    "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "build:all": "npm run build --workspaces --if-present",
-    "dev": "npm run dev --workspaces --if-present",
-    "dev:all": "npm run dev --workspaces --if-present",
-    "dev:student": "npm --prefix \"apps/web-student\" run dev",
-    "dev:teacher": "npm --prefix \"apps/web-teacher\" run dev",
-    "dev:admin": "npm --prefix \"apps/web-admin\" run dev",
-    "dev:api": "npm --prefix \"apps/api\" run dev",
-    "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "vercel-build": "vite build",
-    "db:migrate": "npm run db:migrate -w @ethicslabs/api",
-    "db:seed": "npm run db:seed -w @ethicslabs/api"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

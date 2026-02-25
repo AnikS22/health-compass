@@ -1,24 +1,29 @@
-# EthicsLabs Platform
+# EthicsLabs Platform (Vite + Supabase)
 
-Monorepo scaffold for a Nearpod/Edpuzzle-style Ethics Labs platform with:
+This repository is deployed as a single Vite SPA on Vercel and reads/writes data directly from Supabase.
 
-- `apps/api`: backend APIs, realtime session sync, SQL migrations.
-- `apps/web-student`: student experience app.
-- `apps/web-teacher`: teacher dashboard app.
-- `apps/web-admin`: school + Ethics Labs admin app.
-- `packages/shared`: shared types/contracts across apps.
-
-## Quick start
+## Local development
 
 1. Install dependencies:
    - `npm install`
-2. Start all dev services:
+2. Create `.env` from `.env.example` and set:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+3. Start the app:
    - `npm run dev`
-3. Run database migration files manually against PostgreSQL:
-   - `apps/api/db/migrations/001_initial.sql`
 
-## Notes
+## Build and deploy
 
-- Schema is SQL-first (PostgreSQL).
-- Lesson content is versioned via `lesson_versions`.
-- Live sessions use event append (`live_session_events`) for replay/debug.
+- Production build: `npm run build`
+- Preview build locally: `npm run preview`
+- Vercel output directory: `dist`
+
+## Required production setup
+
+1. In Supabase Auth settings, add your Vercel URL to:
+   - Site URL
+   - Redirect URLs
+2. In Vercel project settings, add env vars:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+3. If users on other devices cannot access the site, disable Vercel deployment protection or share an access link.
