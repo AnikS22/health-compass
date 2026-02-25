@@ -12,12 +12,16 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import LessonPreview from "./pages/LessonPreview";
 import TeacherLiveSession from "./pages/TeacherLiveSession";
+import JoinSession from "./pages/JoinSession";
+import StudentLiveView from "./pages/StudentLiveView";
 
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/join" element={<JoinSession />} />
+        <Route path="/live/student" element={<AuthGuard><StudentLiveView /></AuthGuard>} />
         <Route path="/lesson/preview" element={<AuthGuard><LessonPreview /></AuthGuard>} />
         <Route path="/live/host" element={<AuthGuard><TeacherLiveSession /></AuthGuard>} />
         <Route element={<AuthGuard><Layout /></AuthGuard>}>
