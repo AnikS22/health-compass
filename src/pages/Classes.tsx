@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Users, Plus, Search, Copy, Check, Key } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Users, Plus, Search, Copy, Check, Key, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -22,6 +23,7 @@ type JoinCodeRow = {
 
 export default function Classes() {
   const { appUserId, role } = useAuth();
+  const navigate = useNavigate();
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [enrollCounts, setEnrollCounts] = useState<Record<string, number>>({});
   const [joinCodes, setJoinCodes] = useState<Record<string, JoinCodeRow | null>>({});
@@ -39,17 +41,47 @@ export default function Classes() {
   const [joining, setJoining] = useState(false);
   const [joinStatus, setJoinStatus] = useState("");
 
-  useEffect(() => { loadClasses(); }, []);
+  useEffect(() => { loadClasses(); }, [appUserId, role]);
 
   async function loadClasses() {
-    const { data } = await supabase.from("classes").select("id, name, grade_band, teacher_id, organization_id, created_at").order("created_at", { ascending: false });
-    const cls = (data ?? []) as ClassRow[];
+    if (!appUserId) return;
+
+    let cls: ClassRow[] = [];
+
+    if (role === "student") {
+      // Students: only show classes they are enrolled in
+      const { data: enrollments } = await supabase
+        .from("class_enrollments")
+        .select("class_id")
+        .eq("user_id", appUserId)
+        .eq("status", "active");
+
+      const classIds = (enrollments ?? []).map((e) => e.class_id);
+      if (classIds.length > 0) {
+        const { data } = await supabase
+          .from("classes")
+          .select("id, name, grade_band, teacher_id, organization_id, created_at")
+          .in("id", classIds)
+          .order("created_at", { ascending: false });
+        cls = (data ?? []) as ClassRow[];
+      }
+    } else {
+      // Teachers: show classes they own
+      const { data } = await supabase
+        .from("classes")
+        .select("id, name, grade_band, teacher_id, organization_id, created_at")
+        .eq("teacher_id", appUserId)
+        .order("created_at", { ascending: false });
+      cls = (data ?? []) as ClassRow[];
+    }
+
     setClasses(cls);
 
     if (cls.length > 0) {
+      const ids = cls.map((c) => c.id);
       const [enrollRes, codesRes] = await Promise.all([
-        supabase.from("class_enrollments").select("class_id").in("class_id", cls.map((c) => c.id)),
-        supabase.from("class_join_codes").select("id, class_id, join_code, is_active, expires_at").in("class_id", cls.map((c) => c.id)).eq("is_active", true),
+        supabase.from("class_enrollments").select("class_id").in("class_id", ids),
+        supabase.from("class_join_codes").select("id, class_id, join_code, is_active, expires_at").in("class_id", ids).eq("is_active", true),
       ]);
       const counts: Record<string, number> = {};
       (enrollRes.data ?? []).forEach((e: { class_id: string }) => { counts[e.class_id] = (counts[e.class_id] ?? 0) + 1; });
@@ -80,7 +112,6 @@ export default function Classes() {
 
   async function generateJoinCode(classId: string) {
     setGeneratingCode(classId);
-    // Deactivate existing codes
     const existing = joinCodes[classId];
     if (existing) {
       await supabase.from("class_join_codes").update({ is_active: false }).eq("id", existing.id);
@@ -134,8 +165,12 @@ export default function Classes() {
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Classes</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Manage classrooms and enrollments.</p>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
+            {role === "student" ? "My Classes" : "Classes"}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {role === "student" ? "Classes you're enrolled in." : "Manage your classrooms. Click a class to manage it."}
+          </p>
         </div>
         {role === "teacher" && (
           <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity shadow-sm">
@@ -195,12 +230,17 @@ export default function Classes() {
             const code = joinCodes[c.id];
             const isOwner = c.teacher_id === appUserId;
             return (
-              <div key={c.id} className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 group">
+              <div
+                key={c.id}
+                onClick={() => navigate(`/classes/${c.id}`)}
+                className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 group cursor-pointer"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{c.name}</h3>
                     <p className="text-sm text-muted-foreground mt-0.5">Grade {c.grade_band}</p>
                   </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
                 <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{enrollCounts[c.id] ?? 0} students</span>
@@ -209,7 +249,7 @@ export default function Classes() {
 
                 {/* Join Code section for teachers */}
                 {isOwner && role === "teacher" && (
-                  <div className="mt-4 pt-4 border-t border-border">
+                  <div className="mt-4 pt-4 border-t border-border" onClick={(e) => e.stopPropagation()}>
                     {code ? (
                       <div className="flex items-center gap-2">
                         <Key className="w-3.5 h-3.5 text-primary" />
