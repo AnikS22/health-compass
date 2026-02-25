@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { StepBlock, Hint } from "../components/steps/types";
 import type { Json } from "@/integrations/supabase/types";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 type Participant = { id: string; display_name: string; joined_at: string };
 
@@ -51,35 +52,32 @@ export default function TeacherLiveSession() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [responseCount, setResponseCount] = useState(0);
   const presentationRef = useRef<HTMLDivElement>(null);
+  const broadcastRef = useRef<RealtimeChannel | null>(null);
 
+  // Set up broadcast channel
   useEffect(() => {
     if (!sessionId) return;
-    loadSession();
-  }, [sessionId]);
+    const channel = supabase.channel(`live-session-${sessionId}`);
+    
+    // Listen for student responses
+    channel.on("broadcast", { event: "student_response" }, () => {
+      setResponseCount((c) => c + 1);
+    });
 
-  // Subscribe to participants
-  useEffect(() => {
-    if (!sessionId) return;
-    const channel = supabase
-      .channel(`participants-${sessionId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "live_session_participants", filter: `live_session_id=eq.${sessionId}` },
-        (payload) => setParticipants((prev) => [...prev, payload.new as Participant])
-      )
-      .subscribe();
+    // Listen for new participants
+    channel.on("broadcast", { event: "student_joined" }, (payload) => {
+      const p = payload.payload as Participant;
+      setParticipants((prev) => {
+        if (prev.some((x) => x.id === p.id)) return prev;
+        return [...prev, p];
+      });
+    });
+
+    channel.subscribe();
+    broadcastRef.current = channel;
+
     return () => { supabase.removeChannel(channel); };
   }, [sessionId]);
-
-  // Subscribe to live responses for count
-  useEffect(() => {
-    if (!sessionId || !started) return;
-    const channel = supabase
-      .channel(`responses-${sessionId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "live_responses", filter: `live_session_id=eq.${sessionId}` },
-        () => setResponseCount((c) => c + 1)
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [sessionId, started]);
 
   // Reset response count on step change
   useEffect(() => { setResponseCount(0); }, [currentStep]);
@@ -103,6 +101,11 @@ export default function TeacherLiveSession() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [started, steps.length, currentStep, locked, isFullscreen]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    loadSession();
+  }, [sessionId]);
 
   async function loadSession() {
     if (!sessionId) return;
@@ -139,20 +142,30 @@ export default function TeacherLiveSession() {
     setLoading(false);
   }
 
-  async function sendEvent(eventType: string, payload: Record<string, unknown> = {}) {
-    if (!sessionId || !appUserId) return;
-    await supabase.from("live_session_events").insert([{
-      live_session_id: sessionId, actor_user_id: appUserId,
-      event_type: eventType,
-      event_payload: payload as unknown as Json,
-    }]);
+  // Broadcast an event to all students AND persist to DB
+  function broadcast(eventType: string, payload: Record<string, unknown> = {}) {
+    // Broadcast via Realtime channel (instant)
+    broadcastRef.current?.send({
+      type: "broadcast",
+      event: "teacher_event",
+      payload: { event_type: eventType, ...payload },
+    });
+
+    // Persist to DB (fire-and-forget, for replay on late joins)
+    if (sessionId && appUserId) {
+      supabase.from("live_session_events").insert([{
+        live_session_id: sessionId, actor_user_id: appUserId,
+        event_type: eventType,
+        event_payload: payload as unknown as Json,
+      }]).then(() => {});
+    }
   }
 
   const goNext = useCallback(() => {
     if (currentStep >= steps.length - 1) return;
     const next = currentStep + 1;
     setCurrentStep(next);
-    sendEvent("next_block", { step_index: next });
+    broadcast("next_block", { step_index: next });
     setLocked(false);
   }, [currentStep, steps.length, sessionId, appUserId]);
 
@@ -160,17 +173,17 @@ export default function TeacherLiveSession() {
     if (currentStep <= 0) return;
     const prev = currentStep - 1;
     setCurrentStep(prev);
-    sendEvent("previous_block", { step_index: prev });
+    broadcast("previous_block", { step_index: prev });
     setLocked(false);
   }, [currentStep, sessionId, appUserId]);
 
   const toggleLock = useCallback(() => {
-    setLocked((prev) => { sendEvent(prev ? "unlock" : "lock"); return !prev; });
+    setLocked((prev) => { broadcast(prev ? "unlock" : "lock"); return !prev; });
   }, [sessionId, appUserId]);
 
   const startTimer = useCallback((seconds: number) => {
     setTimerSeconds(seconds); setTimerRunning(true);
-    sendEvent("timer", { duration: seconds });
+    broadcast("timer", { duration: seconds });
     const interval = setInterval(() => {
       setTimerSeconds((s) => { if (s === null || s <= 1) { clearInterval(interval); setTimerRunning(false); return 0; } return s - 1; });
     }, 1000);
@@ -191,7 +204,14 @@ export default function TeacherLiveSession() {
 
   function handleStart() {
     setStarted(true);
-    sendEvent("session_started");
+    broadcast("session_started");
+  }
+
+  async function handleEndSession() {
+    if (!sessionId) return;
+    await supabase.from("live_sessions").update({ ended_at: new Date().toISOString() }).eq("id", sessionId);
+    broadcast("session_ended");
+    navigate("/classes");
   }
 
   if (!sessionId) {
@@ -209,7 +229,7 @@ export default function TeacherLiveSession() {
     return <div className="flex items-center justify-center h-screen bg-background"><div className="animate-pulse text-muted-foreground text-sm">Loading session…</div></div>;
   }
 
-  // ---------- LOBBY SCREEN (before starting) ----------
+  // ---------- LOBBY SCREEN ----------
   if (!started) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden">
@@ -218,7 +238,7 @@ export default function TeacherLiveSession() {
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-primary/5 blur-3xl" />
         </div>
 
-        <button onClick={() => navigate("/live")} className="absolute top-6 left-6 p-2 rounded-lg hover:bg-muted transition-colors z-10">
+        <button onClick={() => navigate("/classes")} className="absolute top-6 left-6 p-2 rounded-lg hover:bg-muted transition-colors z-10">
           <ArrowLeft className="w-5 h-5 text-muted-foreground" />
         </button>
 
@@ -273,6 +293,10 @@ export default function TeacherLiveSession() {
             <Play className="w-5 h-5" />
             Start Lesson ({steps.length} steps)
           </button>
+
+          {steps.length === 0 && (
+            <p className="text-sm text-destructive font-medium">This lesson has no content blocks. Choose a lesson with published blocks.</p>
+          )}
         </div>
       </div>
     );
@@ -311,6 +335,9 @@ export default function TeacherLiveSession() {
           <button onClick={toggleFullscreen} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             {isFullscreen ? <Minimize className="w-4 h-4 text-muted-foreground" /> : <Maximize className="w-4 h-4 text-muted-foreground" />}
           </button>
+          <button onClick={handleEndSession} className="px-3 py-1.5 border border-destructive/30 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/5 transition-colors">
+            End
+          </button>
         </div>
       </div>
 
@@ -321,11 +348,9 @@ export default function TeacherLiveSession() {
 
       {/* Main presentation area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Slide area */}
         <div className="flex-1 flex flex-col items-center justify-center p-8 relative">
           {step && (
             <div className="w-full max-w-4xl space-y-6 animate-in fade-in duration-500">
-              {/* Step type badge */}
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{getBlockIcon(step.block_type)}</span>
                 <div>
@@ -338,12 +363,10 @@ export default function TeacherLiveSession() {
                 </div>
               </div>
 
-              {/* Body text */}
               {step.body && (
                 <p className="text-xl text-muted-foreground leading-relaxed">{step.body}</p>
               )}
 
-              {/* Content rendering based on block type */}
               {(step.block_type as string) === "video" && (
                 <div className="rounded-2xl overflow-hidden border border-border bg-card aspect-video flex items-center justify-center">
                   {config.video_url ? (
@@ -424,7 +447,6 @@ export default function TeacherLiveSession() {
                 </div>
               )}
 
-              {/* Fallback for other types */}
               {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare"].includes(step.block_type) && (
                 <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
                   <span className="text-5xl">{getBlockIcon(step.block_type)}</span>
@@ -437,7 +459,6 @@ export default function TeacherLiveSession() {
             </div>
           )}
 
-          {/* Timer overlay */}
           {timerRunning && timerSeconds !== null && (
             <div className="absolute top-4 right-4 bg-card border border-border rounded-2xl shadow-lg p-4 text-center">
               <p className="text-xs text-muted-foreground font-semibold uppercase">Timer</p>
@@ -477,7 +498,7 @@ export default function TeacherLiveSession() {
             {steps.map((s, i) => (
               <button
                 key={s.id}
-                onClick={() => { setCurrentStep(i); sendEvent("goto_block", { step_index: i }); }}
+                onClick={() => { setCurrentStep(i); broadcast("goto_block", { step_index: i }); }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${
                   i === currentStep ? "bg-primary/10 text-primary" : i < currentStep ? "text-muted-foreground" : "text-foreground hover:bg-secondary"
                 }`}
@@ -488,7 +509,6 @@ export default function TeacherLiveSession() {
             ))}
           </div>
 
-          {/* Participants count */}
           <div className="p-4 border-t border-border">
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1.5 text-muted-foreground"><Users className="w-4 h-4" /> Joined</span>
