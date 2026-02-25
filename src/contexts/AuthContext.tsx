@@ -2,11 +2,20 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
+const ROLE_PRIORITY: Record<string, number> = {
+  ethics_admin: 0,
+  curriculum_admin: 1,
+  school_admin: 2,
+  teacher: 3,
+  student: 4,
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   role: string | null;
+  roles: string[];
   appUserId: string | null;
   signOut: () => Promise<void>;
 }
@@ -16,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   role: null,
+  roles: [],
   appUserId: null,
   signOut: async () => {},
 });
@@ -25,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
   const [appUserId, setAppUserId] = useState<string | null>(null);
 
   async function loadProfile(authUser: User) {
@@ -39,10 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role_key")
-        .eq("user_id", userData.id)
-        .limit(1)
-        .maybeSingle();
-      setRole(roleData?.role_key ?? null);
+        .eq("user_id", userData.id);
+      const allRoles = (roleData ?? []).map((r) => r.role_key);
+      setRoles(allRoles);
+      // Pick highest-priority role
+      const sorted = [...allRoles].sort((a, b) => (ROLE_PRIORITY[a] ?? 99) - (ROLE_PRIORITY[b] ?? 99));
+      setRole(sorted[0] ?? null);
     }
   }
 
@@ -55,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => loadProfile(session.user), 0);
         } else {
           setRole(null);
+          setRoles([]);
           setAppUserId(null);
           setLoading(false);
         }
@@ -79,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, appUserId, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, roles, appUserId, signOut }}>
       {children}
     </AuthContext.Provider>
   );
