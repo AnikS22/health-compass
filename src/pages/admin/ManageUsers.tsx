@@ -77,6 +77,11 @@ export default function ManageUsers() {
     loadUsers();
   }
 
+  async function assignOrg(userId: string, orgId: string) {
+    await supabase.from("users").update({ organization_id: orgId || null }).eq("id", userId);
+    loadUsers();
+  }
+
   async function handleCreate() {
     setCreating(true);
     setCreateError("");
@@ -287,7 +292,18 @@ export default function ManageUsers() {
                       })}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{u.org_name}</td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={u.organization_id ?? ""}
+                      onChange={(e) => assignOrg(u.id, e.target.value)}
+                      className="bg-background border border-input rounded-lg px-2 py-1 text-xs text-foreground"
+                    >
+                      <option value="">Unassigned</option>
+                      {orgs.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </select>
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
                       {u.is_active ? "Active" : "Inactive"}
