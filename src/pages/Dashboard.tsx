@@ -4,6 +4,7 @@ import { Users, Radio, Award, School, Sparkles, BookOpen, ClipboardList, Podcast
 import StatCard from "@/components/StatCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import AdminDashboard from "./admin/AdminDashboard";
 
 type RecentSession = {
   id: string;
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   if (role === "student") return <StudentDashboard appUserId={appUserId} navigate={navigate} />;
+  if (role === "ethics_admin") return <AdminDashboard />;
   return <TeacherDashboard />;
 }
 
