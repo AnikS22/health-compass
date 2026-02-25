@@ -1703,7 +1703,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_app_user_id: { Args: never; Returns: string }
+      get_user_org_id: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["role_key"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       assignment_target_type: "class" | "group" | "student"
