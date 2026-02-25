@@ -7,12 +7,28 @@ import {
   ClipboardList,
   BarChart3,
   LogOut,
-  GraduationCap,
   Scale,
+  Podcast,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-const navItems = [
+const teacherNav = [
+  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/classes", icon: Users, label: "Classes" },
+  { to: "/curriculum", icon: BookOpen, label: "Curriculum" },
+  { to: "/live", icon: Radio, label: "Live Sessions" },
+  { to: "/assignments", icon: ClipboardList, label: "Assignments" },
+  { to: "/reports", icon: BarChart3, label: "Reports" },
+];
+
+const studentNav = [
+  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/classes", icon: Users, label: "My Classes" },
+  { to: "/join", icon: Podcast, label: "Join Session" },
+  { to: "/assignments", icon: ClipboardList, label: "Assignments" },
+];
+
+const adminNav = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/classes", icon: Users, label: "Classes" },
   { to: "/curriculum", icon: BookOpen, label: "Curriculum" },
@@ -22,7 +38,9 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
+
+  const navItems = role === "student" ? studentNav : role === "teacher" ? teacherNav : adminNav;
 
   return (
     <div className="flex h-screen">
@@ -37,7 +55,9 @@ export default function Layout() {
               <h1 className="text-base font-extrabold text-foreground tracking-tight leading-tight">
                 The Ethics Lab
               </h1>
-              <p className="text-[11px] text-muted-foreground font-medium">Education Platform</p>
+              <p className="text-[11px] text-muted-foreground font-medium">
+                {role === "student" ? "Student" : role === "teacher" ? "Teacher" : "Admin"} Portal
+              </p>
             </div>
           </div>
         </div>

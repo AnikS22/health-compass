@@ -1,17 +1,32 @@
 import { useEffect, useState } from "react";
-import { Users, Radio, Award, School, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Users, Radio, Award, School, Sparkles, BookOpen, ClipboardList, Podcast } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 type RecentSession = {
   id: string;
   session_code: string;
   started_at: string;
   ended_at: string | null;
-  host_teacher_id: string;
+};
+
+type EnrolledClass = {
+  class_id: string;
+  class_name: string;
+  grade_band: string;
 };
 
 export default function Dashboard() {
+  const { role, appUserId } = useAuth();
+  const navigate = useNavigate();
+
+  if (role === "student") return <StudentDashboard appUserId={appUserId} navigate={navigate} />;
+  return <TeacherDashboard />;
+}
+
+function TeacherDashboard() {
   const [orgCount, setOrgCount] = useState(0);
   const [studentCount, setStudentCount] = useState(0);
   const [sessionCount, setSessionCount] = useState(0);
@@ -26,7 +41,7 @@ export default function Dashboard() {
         supabase.from("users").select("id", { count: "exact", head: true }),
         supabase.from("live_sessions").select("id", { count: "exact", head: true }),
         supabase.from("certificates").select("id", { count: "exact", head: true }),
-        supabase.from("live_sessions").select("id, session_code, started_at, ended_at, host_teacher_id").order("started_at", { ascending: false }).limit(5),
+        supabase.from("live_sessions").select("id, session_code, started_at, ended_at").order("started_at", { ascending: false }).limit(5),
       ]);
       setOrgCount(orgRes.count ?? 0);
       setStudentCount(studentRes.count ?? 0);
@@ -44,10 +59,10 @@ export default function Dashboard() {
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            <span className="text-xs font-bold uppercase tracking-widest text-primary">Dashboard</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-primary">Teacher Dashboard</span>
           </div>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Welcome back to The Ethics Lab</h1>
-          <p className="text-muted-foreground mt-2 max-w-xl">Where GenZ shapes the future of ethical AI.</p>
+          <p className="text-muted-foreground mt-2 max-w-xl">Manage your classes, curriculum, and live sessions.</p>
         </div>
         <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-primary/10 blur-2xl" />
       </div>
@@ -62,7 +77,6 @@ export default function Dashboard() {
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="p-6 border-b border-border">
           <h3 className="text-sm font-bold text-foreground">Recent Live Sessions</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Latest activity</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -92,6 +106,110 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function StudentDashboard({ appUserId, navigate }: { appUserId: string | null; navigate: ReturnType<typeof useNavigate> }) {
+  const [enrolledClasses, setEnrolledClasses] = useState<EnrolledClass[]>([]);
+  const [assignmentCount, setAssignmentCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!appUserId) return;
+    async function load() {
+      // Get enrolled classes
+      const { data: enrollments } = await supabase
+        .from("class_enrollments")
+        .select("class_id")
+        .eq("user_id", appUserId!)
+        .eq("status", "active");
+
+      const classIds = (enrollments ?? []).map((e) => e.class_id);
+
+      if (classIds.length > 0) {
+        const { data: classes } = await supabase
+          .from("classes")
+          .select("id, name, grade_band")
+          .in("id", classIds);
+
+        setEnrolledClasses(
+          (classes ?? []).map((c) => ({ class_id: c.id, class_name: c.name, grade_band: c.grade_band }))
+        );
+
+        // Count assignments for enrolled classes
+        const { count } = await supabase
+          .from("assignments")
+          .select("id", { count: "exact", head: true })
+          .in("class_id", classIds);
+        setAssignmentCount(count ?? 0);
+      }
+      setLoading(false);
+    }
+    load();
+  }, [appUserId]);
+
+  return (
+    <div className="p-8 max-w-7xl mx-auto space-y-8">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border border-primary/20 p-8">
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-widest text-primary">Student Dashboard</span>
+          </div>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Welcome to The Ethics Lab</h1>
+          <p className="text-muted-foreground mt-2 max-w-xl">Your classes, assignments, and live sessions — all in one place.</p>
+        </div>
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-primary/10 blur-2xl" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard title="My Classes" value={loading ? "—" : enrolledClasses.length} subtitle="Enrolled" icon={BookOpen} />
+        <StatCard title="Assignments" value={loading ? "—" : assignmentCount} subtitle="Pending" icon={ClipboardList} />
+        <div
+          onClick={() => navigate("/join")}
+          className="cursor-pointer bg-card rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex items-center gap-4"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Podcast className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Join Live Session</p>
+            <p className="text-xs text-muted-foreground">Enter a session code</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Enrolled Classes */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="p-6 border-b border-border">
+          <h3 className="text-sm font-bold text-foreground">My Classes</h3>
+        </div>
+        {loading ? (
+          <div className="p-6 text-center text-muted-foreground text-sm">Loading…</div>
+        ) : enrolledClasses.length === 0 ? (
+          <div className="p-8 text-center space-y-3">
+            <Users className="w-10 h-10 text-muted-foreground mx-auto" />
+            <p className="text-foreground font-semibold">No classes yet</p>
+            <p className="text-sm text-muted-foreground">Ask your teacher for a class join code.</p>
+            <button onClick={() => navigate("/classes")} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90">
+              Join a Class
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {enrolledClasses.map((c) => (
+              <div key={c.class_id} className="p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors">
+                <div>
+                  <p className="font-semibold text-foreground">{c.class_name}</p>
+                  <p className="text-xs text-muted-foreground">Grade {c.grade_band}</p>
+                </div>
+                <span className="text-xs bg-success/10 text-success px-3 py-1 rounded-full font-bold">Enrolled</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

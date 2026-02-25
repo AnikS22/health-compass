@@ -20,7 +20,6 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/join" element={<JoinSession />} />
         <Route path="/live/student" element={<AuthGuard><StudentLiveView /></AuthGuard>} />
         <Route path="/lesson/preview" element={<AuthGuard><LessonPreview /></AuthGuard>} />
         <Route path="/live/host" element={<AuthGuard><TeacherLiveSession /></AuthGuard>} />
@@ -29,6 +28,7 @@ export default function App() {
           <Route path="/classes" element={<Classes />} />
           <Route path="/curriculum" element={<Curriculum />} />
           <Route path="/live" element={<LiveSessions />} />
+          <Route path="/join" element={<JoinSession />} />
           <Route path="/assignments" element={<Assignments />} />
           <Route path="/reports" element={<Reports />} />
         </Route>

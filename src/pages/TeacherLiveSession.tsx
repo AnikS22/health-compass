@@ -365,7 +365,7 @@ export default function TeacherLiveSession() {
                     </div>
                     <div>
                       <h3 className="text-2xl font-bold text-foreground">{String(config.key_idea ?? "")}</h3>
-                      {config.detail && <p className="text-lg text-muted-foreground mt-2">{String(config.detail ?? "")}</p>}
+                      {config.detail != null && <p className="text-lg text-muted-foreground mt-2">{String(config.detail)}</p>}
                     </div>
                   </div>
                 </div>
