@@ -1,4 +1,4 @@
-import { Scale, Mail, Lock, User } from "lucide-react";
+import { Scale, Mail, Lock, User, GraduationCap } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState<"teacher" | "student">("teacher");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export default function Login() {
         email,
         password,
         options: {
-          data: { full_name: name || "User", role: "teacher" },
+          data: { full_name: name || "User", role },
           emailRedirectTo: window.location.origin,
         },
       });
@@ -57,14 +58,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      {/* Decorative background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-32 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
         <div className="absolute bottom-1/4 -right-32 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-sm space-y-8">
-        {/* Brand */}
         <div className="text-center">
           <div className="w-16 h-16 rounded-3xl bg-primary mx-auto flex items-center justify-center mb-5 shadow-lg">
             <Scale className="w-8 h-8 text-primary-foreground" />
@@ -77,7 +76,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Mode toggle */}
         <div className="flex rounded-2xl border border-border overflow-hidden bg-card p-1 gap-1">
           <button
             type="button"
@@ -97,19 +95,42 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "signup" && (
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Name</label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                  className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
-                />
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">Name</label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
+                  />
+                </div>
               </div>
-            </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">I am a…</label>
+                <div className="flex rounded-xl border border-border overflow-hidden bg-card p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setRole("teacher")}
+                    className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${role === "teacher" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    Teacher
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole("student")}
+                    className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${role === "student" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <User className="w-4 h-4" />
+                    Student
+                  </button>
+                </div>
+              </div>
+            </>
           )}
           <div>
             <label className="block text-sm font-semibold text-foreground mb-1.5">Email</label>
