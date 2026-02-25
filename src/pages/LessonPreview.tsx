@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import StepRunner from "../components/steps/StepRunner";
@@ -7,6 +7,7 @@ import type { StepBlock, StepResponse, Hint } from "../components/steps/types";
 
 export default function LessonPreview() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [steps, setSteps] = useState<StepBlock[]>([]);
   const [lessonTitle, setLessonTitle] = useState("");
   const [loading, setLoading] = useState(true);
@@ -14,21 +15,66 @@ export default function LessonPreview() {
 
   useEffect(() => {
     async function loadLesson() {
-      // Fetch the latest published lesson version with our 4 step types
-      const { data: versions, error: vErr } = await supabase
+      const versionId = searchParams.get("versionId");
+
+      if (versionId) {
+        // Load specific version by ID
+        const { data: version, error: vErr } = await supabase
+          .from("lesson_versions")
+          .select("id, lesson_id, lessons!inner(title)")
+          .eq("id", versionId)
+          .single();
+
+        if (vErr || !version) {
+          setError("Lesson version not found.");
+          setLoading(false);
+          return;
+        }
+
+        const lesson = version.lessons as unknown as { title: string };
+        setLessonTitle(lesson.title);
+
+        const { data: bData } = await supabase
+          .from("lesson_blocks")
+          .select("id, sequence_no, block_type, title, body, config, hints, is_gate, mastery_rules")
+          .eq("lesson_version_id", version.id)
+          .order("sequence_no", { ascending: true });
+
+        if (!bData || bData.length === 0) {
+          setError("No blocks in this lesson version.");
+          setLoading(false);
+          return;
+        }
+
+        setSteps(bData.map((b) => ({
+          id: b.id,
+          sequence_no: b.sequence_no,
+          block_type: b.block_type as StepBlock["block_type"],
+          title: b.title,
+          body: b.body,
+          config: (b.config ?? {}) as Record<string, unknown>,
+          hints: (b.hints ?? []) as unknown as Hint[],
+          is_gate: b.is_gate,
+          mastery_rules: (b.mastery_rules ?? {}) as Record<string, unknown>,
+        })));
+        setLoading(false);
+        return;
+      }
+
+      // Fallback: find latest published lesson with interactive blocks
+      const { data: versions, error: vErr2 } = await supabase
         .from("lesson_versions")
         .select("id, lesson_id, lessons!inner(title)")
         .eq("publish_status", "published")
         .order("published_at", { ascending: false })
         .limit(10);
 
-      if (vErr || !versions?.length) {
+      if (vErr2 || !versions?.length) {
         setError("No published lessons found.");
         setLoading(false);
         return;
       }
 
-      // Find first version that has our interactive block types
       let chosenVersion: (typeof versions)[0] | null = null;
       let blocks: StepBlock[] = [];
 
@@ -70,7 +116,7 @@ export default function LessonPreview() {
     }
 
     loadLesson();
-  }, []);
+  }, [searchParams]);
 
   const handleStepComplete = useCallback((stepId: string, response: StepResponse) => {
     console.log("Step completed:", stepId, response);

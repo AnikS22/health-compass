@@ -13,13 +13,13 @@ type AssignmentRow = {
 };
 
 type ClassOption = { id: string; name: string };
-type LessonVersionOption = { id: string; version_label: string };
+type LessonVersionOption = { id: string; version_label: string; lesson_title: string };
 
 export default function Assignments() {
   const { role, appUserId } = useAuth();
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [classNames, setClassNames] = useState<Record<string, string>>({});
-  const [versionLabels, setVersionLabels] = useState<Record<string, string>>({});
+  const [versionLabels, setVersionLabels] = useState<Record<string, { label: string; lessonTitle: string }>>({});
   const [loading, setLoading] = useState(true);
 
   // Create assignment state
@@ -73,15 +73,23 @@ export default function Assignments() {
 
       const [classRes, lvRes] = await Promise.all([
         supabase.from("classes").select("id, name").in("id", cIds),
-        supabase.from("lesson_versions").select("id, version_label").in("id", lvIds),
+        supabase.from("lesson_versions").select("id, version_label, lesson_id").in("id", lvIds),
       ]);
 
       const cn: Record<string, string> = {};
-      (classRes.data ?? []).forEach((c: { id: string; name: string }) => { cn[c.id] = c.name; });
+      (classRes.data ?? []).forEach((c: any) => { cn[c.id] = c.name; });
       setClassNames(cn);
 
-      const vl: Record<string, string> = {};
-      (lvRes.data ?? []).forEach((v: { id: string; version_label: string }) => { vl[v.id] = v.version_label; });
+      // Get lesson titles for the versions
+      const lessonIds = [...new Set((lvRes.data ?? []).map((v: any) => v.lesson_id))];
+      const { data: lessonData } = await supabase.from("lessons").select("id, title").in("id", lessonIds);
+      const lessonMap: Record<string, string> = {};
+      (lessonData ?? []).forEach((l: any) => { lessonMap[l.id] = l.title; });
+
+      const vl: Record<string, { label: string; lessonTitle: string }> = {};
+      (lvRes.data ?? []).forEach((v: any) => {
+        vl[v.id] = { label: v.version_label, lessonTitle: lessonMap[v.lesson_id] || "Lesson" };
+      });
       setVersionLabels(vl);
     }
     setLoading(false);
@@ -89,13 +97,22 @@ export default function Assignments() {
 
   async function openCreateForm() {
     setShowCreate(true);
-    // Load teacher's classes and published lessons
     const [classRes, lvRes] = await Promise.all([
       supabase.from("classes").select("id, name").eq("teacher_id", appUserId!).order("name"),
-      supabase.from("lesson_versions").select("id, version_label").eq("publish_status", "published").order("version_label"),
+      supabase.from("lesson_versions").select("id, version_label, lesson_id").eq("publish_status", "published"),
     ]);
     setClasses((classRes.data ?? []) as ClassOption[]);
-    setLessonVersions((lvRes.data ?? []) as LessonVersionOption[]);
+
+    // Get lesson titles
+    const lessonIds = [...new Set((lvRes.data ?? []).map((v: any) => v.lesson_id))];
+    const { data: lessonData } = await supabase.from("lessons").select("id, title").in("id", lessonIds.length > 0 ? lessonIds : ["00000000-0000-0000-0000-000000000000"]);
+    const lessonMap: Record<string, string> = {};
+    (lessonData ?? []).forEach((l: any) => { lessonMap[l.id] = l.title; });
+
+    setLessonVersions((lvRes.data ?? []).map((v: any) => ({
+      id: v.id, version_label: v.version_label,
+      lesson_title: lessonMap[v.lesson_id] || "Unknown Lesson"
+    })));
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -190,7 +207,7 @@ export default function Assignments() {
                   className="w-full px-4 py-3 bg-background border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary"
                 >
                   <option value="">Select a lesson</option>
-                  {lessonVersions.map((lv) => <option key={lv.id} value={lv.id}>{lv.version_label}</option>)}
+                  {lessonVersions.map((lv) => <option key={lv.id} value={lv.id}>{lv.lesson_title} ({lv.version_label})</option>)}
                 </select>
               </div>
               <div>
@@ -225,46 +242,49 @@ export default function Assignments() {
         </div>
       ) : (
         <div className="space-y-3">
-          {assignments.map((a) => (
-            <div key={a.id} className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <ClipboardList className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
-                      {versionLabels[a.lesson_version_id] ?? "Lesson"}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {classNames[a.class_id] ?? "Class"}
-                    </p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1 bg-secondary px-2.5 py-0.5 rounded-lg font-medium">
-                        <Calendar className="w-3 h-3" />
-                        {a.due_at ? new Date(a.due_at).toLocaleDateString() : "No due date"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Created {new Date(a.created_at).toLocaleDateString()}
-                      </span>
+          {assignments.map((a) => {
+            const info = versionLabels[a.lesson_version_id];
+            return (
+              <div key={a.id} className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 group">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                      <ClipboardList className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                        {info?.lessonTitle ?? "Lesson"}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {classNames[a.class_id] ?? "Class"} · {info?.label ?? ""}
+                      </p>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1 bg-secondary px-2.5 py-0.5 rounded-lg font-medium">
+                          <Calendar className="w-3 h-3" />
+                          {a.due_at ? new Date(a.due_at).toLocaleDateString() : "No due date"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Created {new Date(a.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {role === "teacher" && (
-                    <button
-                      onClick={() => deleteAssignment(a.id)}
-                      className="p-2 rounded-lg hover:bg-destructive/10 transition-colors"
-                      title="Delete assignment"
-                    >
-                      <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                    </button>
-                  )}
-                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <div className="flex items-center gap-2">
+                    {role === "teacher" && (
+                      <button
+                        onClick={() => deleteAssignment(a.id)}
+                        className="p-2 rounded-lg hover:bg-destructive/10 transition-colors"
+                        title="Delete assignment"
+                      >
+                        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                      </button>
+                    )}
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
