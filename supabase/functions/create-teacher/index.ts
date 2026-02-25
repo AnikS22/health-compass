@@ -5,6 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const VALID_ROLES = ["student", "teacher", "school_admin", "ethics_admin", "curriculum_admin"];
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -23,7 +25,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "");
+    const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const anonClient = createClient(supabaseUrl, anonKey);
     const { data: { user: caller } } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
     if (!caller) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -40,25 +43,27 @@ Deno.serve(async (req) => {
     }
     const { data: roleCheck } = await supabase.from("user_roles").select("role_key").eq("user_id", callerApp.id).eq("role_key", "ethics_admin");
     if (!roleCheck || roleCheck.length === 0) {
-      return new Response(JSON.stringify({ error: "Only ethics admins can create teachers" }), {
+      return new Response(JSON.stringify({ error: "Only ethics admins can create users" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { email, password, full_name, organization_id } = await req.json();
-    if (!email || !password || !full_name || !organization_id) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+    const { email, password, full_name, organization_id, role } = await req.json();
+    if (!email || !password || !full_name) {
+      return new Response(JSON.stringify({ error: "Missing required fields: email, password, full_name" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const assignRole = role && VALID_ROLES.includes(role) ? role : "student";
 
     // Create the auth user
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name, role: "teacher" },
-      app_metadata: { organization_id },
+      user_metadata: { full_name, role: assignRole },
+      app_metadata: { organization_id: organization_id || undefined },
     });
 
     if (authError) {
@@ -67,16 +72,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    // The handle_new_user trigger should create the user + role,
-    // but ensure organization_id is set
     if (authData.user) {
-      // Wait a moment for the trigger to fire
+      // Wait for trigger to fire
       await new Promise(r => setTimeout(r, 500));
-      
-      // Update the user's organization
-      await supabase.from("users")
-        .update({ organization_id })
-        .eq("auth_user_id", authData.user.id);
+
+      // Ensure organization is set if provided
+      if (organization_id) {
+        await supabase.from("users")
+          .update({ organization_id })
+          .eq("auth_user_id", authData.user.id);
+      }
+
+      // Ensure role is set (trigger should handle this, but just in case)
+      const { data: appUser } = await supabase.from("users").select("id").eq("auth_user_id", authData.user.id).single();
+      if (appUser) {
+        await supabase.from("user_roles")
+          .upsert({ user_id: appUser.id, role_key: assignRole }, { onConflict: "user_id,role_key" });
+      }
     }
 
     return new Response(JSON.stringify({ ok: true, user_id: authData.user.id }), {

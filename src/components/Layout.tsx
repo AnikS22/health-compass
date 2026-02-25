@@ -32,6 +32,7 @@ const studentNav = [
 
 const adminNav = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/admin/users", icon: Users, label: "Users" },
   { to: "/admin/schools", icon: Building2, label: "Schools" },
   { to: "/admin/teachers", icon: GraduationCap, label: "Teachers" },
   { to: "/admin/curriculum", icon: BookOpen, label: "Curriculum" },
