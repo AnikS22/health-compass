@@ -1712,6 +1712,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      join_class_by_code: { Args: { p_code: string }; Returns: Json }
+      join_live_session_by_code: {
+        Args: { p_code: string; p_display_name?: string }
+        Returns: Json
+      }
     }
     Enums: {
       assignment_target_type: "class" | "group" | "student"
