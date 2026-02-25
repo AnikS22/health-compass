@@ -2,12 +2,13 @@
   "name": "ethicslabs-platform",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run vercel-build && rm -rf public && cp -R apps/web-student/out public",
+    "build": "vite build",
     "build:dev": "vite build --mode development",
     "build:all": "npm run build --workspaces --if-present",
     "dev": "npm run dev --workspaces --if-present",
@@ -18,7 +19,7 @@
     "dev:api": "npm --prefix \"apps/api\" run dev",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "vercel-build": "npm run build -w @ethicslabs/web-student",
+    "vercel-build": "vite build",
     "db:migrate": "npm run db:migrate -w @ethicslabs/api",
     "db:seed": "npm run db:seed -w @ethicslabs/api"
   },

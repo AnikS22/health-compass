@@ -1,22 +1,11 @@
 {
   "installCommand": "npm install",
-  "buildCommand": "npm run vercel-build",
-  "outputDirectory": "apps/web-student/out",
-  "redirects": [
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
     {
-      "source": "/dashboard",
-      "destination": "/dashboard/",
-      "permanent": false
-    },
-    {
-      "source": "/live",
-      "destination": "/live/",
-      "permanent": false
-    },
-    {
-      "source": "/assignments",
-      "destination": "/assignments/",
-      "permanent": false
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
