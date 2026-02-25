@@ -3,6 +3,14 @@ import ConceptRevealStep from "./ConceptRevealStep";
 import MicroChallengeStep from "./MicroChallengeStep";
 import ReasoningResponseStep from "./ReasoningResponseStep";
 import PeerCompareStep from "./PeerCompareStep";
+import DebateStep from "./DebateStep";
+import type { DebateConfig } from "./DebateStep";
+import CollaborativeBoardStep from "./CollaborativeBoardStep";
+import type { CollaborativeBoardConfig } from "./CollaborativeBoardStep";
+import PeerReviewStep from "./PeerReviewStep";
+import type { PeerReviewConfig } from "./PeerReviewStep";
+import GroupChallengeStep from "./GroupChallengeStep";
+import type { GroupChallengeConfig } from "./GroupChallengeStep";
 import type {
   StepBlock,
   StepResponse,
@@ -118,6 +126,38 @@ export default function StepRunner({
           <PeerCompareStep
             config={step.config as unknown as PeerCompareConfig}
             distribution={peerDistributions?.[step.id]}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        )}
+        {step.block_type === "debate" && (
+          <DebateStep
+            config={step.config as unknown as DebateConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        )}
+        {(step.block_type === "collaborative_board" || step.block_type === "group_board") && (
+          <CollaborativeBoardStep
+            config={step.config as unknown as CollaborativeBoardConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        )}
+        {step.block_type === "peer_review" as string && (
+          <PeerReviewStep
+            config={step.config as unknown as PeerReviewConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        )}
+        {step.block_type === "group_challenge" as string && (
+          <GroupChallengeStep
+            config={step.config as unknown as GroupChallengeConfig}
+            body={step.body}
             onComplete={(r) => handleComplete(r)}
             isLive={isLive}
           />

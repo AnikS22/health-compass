@@ -1374,6 +1374,7 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string
+          email_domain: string | null
           id: string
           name: string
           tenant_slug: string
@@ -1381,6 +1382,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email_domain?: string | null
           id?: string
           name: string
           tenant_slug: string
@@ -1388,6 +1390,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email_domain?: string | null
           id?: string
           name?: string
           tenant_slug?: string
@@ -1740,6 +1743,8 @@ export type Database = {
         | "micro_challenge"
         | "reasoning_response"
         | "peer_compare"
+        | "peer_review"
+        | "group_challenge"
       enrollment_status: "active" | "invited" | "removed"
       moderation_reason: "pii" | "profanity" | "safety" | "other"
       moderation_resolution_status: "open" | "resolved" | "dismissed"
@@ -1899,6 +1904,8 @@ export const Constants = {
         "micro_challenge",
         "reasoning_response",
         "peer_compare",
+        "peer_review",
+        "group_challenge",
       ],
       enrollment_status: ["active", "invited", "removed"],
       moderation_reason: ["pii", "profanity", "safety", "other"],

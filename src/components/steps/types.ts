@@ -1,4 +1,4 @@
-export type StepType = "concept_reveal" | "micro_challenge" | "reasoning_response" | "peer_compare";
+export type StepType = "concept_reveal" | "micro_challenge" | "reasoning_response" | "peer_compare" | "debate" | "collaborative_board" | "group_board" | "peer_review" | "group_challenge";
 
 export interface Hint {
   level: number;
@@ -46,6 +46,12 @@ export interface PeerCompareConfig {
 export interface StepResponse {
   selected_option_id?: string;
   text?: string;
+  side?: string;
+  argument?: string;
+  posts?: string[];
+  rating?: number;
+  selected_choice_id?: string;
+  [key: string]: unknown;
 }
 
 export interface PeerDistribution {

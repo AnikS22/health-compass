@@ -25,7 +25,8 @@ const BLOCK_TYPES = [
   "video", "poll", "mcq", "multi_select", "short_answer", "scenario",
   "dilemma_tree", "drag_drop", "matching", "debate", "group_board",
   "collaborative_board", "drawing", "red_team", "exit_ticket",
-  "concept_reveal", "micro_challenge", "reasoning_response", "peer_compare"
+  "concept_reveal", "micro_challenge", "reasoning_response", "peer_compare",
+  "peer_review", "group_challenge"
 ] as const;
 
 const GRADE_BANDS = ["K-2", "3-5", "6-8", "9-10", "11-12"];
@@ -335,6 +336,66 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
       </div>
     );
   }
+  if (blockType === "peer_review") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Review Prompt</label>
+        <textarea value={config.prompt || ""} onChange={e => onChange({ ...config, prompt: e.target.value })} rows={2}
+          placeholder="What should students write about and then review?"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Review Criteria (one per line)</label>
+        <textarea value={(config.review_criteria || []).join("\n")} rows={3}
+          onChange={e => onChange({ ...config, review_criteria: e.target.value.split("\n").filter((s: string) => s.trim()) })}
+          placeholder={"Clarity of argument\nUse of evidence\nRespectful tone"}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none font-mono" />
+        <label className="text-xs font-semibold text-foreground">Max Rating (default: 5)</label>
+        <input type="number" value={config.max_rating || ""} onChange={e => onChange({ ...config, max_rating: e.target.value ? parseInt(e.target.value) : undefined })}
+          placeholder="5"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          <input type="checkbox" checked={!!config.anonymous} onChange={e => onChange({ ...config, anonymous: e.target.checked })} />
+          Anonymous reviews
+        </label>
+      </div>
+    );
+  }
+  if (blockType === "group_challenge") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Challenge Prompt</label>
+        <textarea value={config.prompt || ""} onChange={e => onChange({ ...config, prompt: e.target.value })} rows={3}
+          placeholder="Describe the group challenge..."
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Group Size (optional)</label>
+        <input type="number" value={config.group_size || ""} onChange={e => onChange({ ...config, group_size: e.target.value ? parseInt(e.target.value) : undefined })}
+          placeholder="4"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Time Limit (seconds, optional)</label>
+        <input type="number" value={config.time_limit_seconds || ""} onChange={e => onChange({ ...config, time_limit_seconds: e.target.value ? parseInt(e.target.value) : undefined })}
+          placeholder="300"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Submission Type</label>
+        <select value={config.submission_type || "text"} onChange={e => onChange({ ...config, submission_type: e.target.value })}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground">
+          <option value="text">Free text</option>
+          <option value="choice">Multiple choice</option>
+        </select>
+        {config.submission_type === "choice" && (
+          <>
+            <label className="text-xs font-semibold text-foreground">Choices (JSON array of {`{id, text}`})</label>
+            <textarea value={JSON.stringify(config.choices || [], null, 2)} rows={4}
+              onChange={e => { try { onChange({ ...config, choices: JSON.parse(e.target.value) }); } catch {} }}
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
+          </>
+        )}
+        <label className="text-xs font-semibold text-foreground">Success Criteria (one per line, optional)</label>
+        <textarea value={(config.rubric_criteria || []).join("\n")} rows={3}
+          onChange={e => onChange({ ...config, rubric_criteria: e.target.value.split("\n").filter((s: string) => s.trim()) })}
+          placeholder={"Uses evidence\nConsiders multiple perspectives"}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none font-mono" />
+      </div>
+    );
+  }
   // Fallback: raw JSON editor for unknown types
   return (
     <div className="space-y-2">
@@ -381,6 +442,15 @@ function BlockPreview({ block }: { block: Block }) {
   }
   if (block.block_type === "peer_compare" && cfg?.prompt) {
     return <div className="mt-2 p-3 rounded-lg bg-secondary text-sm text-muted-foreground italic">"{cfg.prompt}"</div>;
+  }
+  if (block.block_type === "debate" && cfg?.topic) {
+    return <div className="mt-2 p-3 rounded-lg bg-secondary text-sm text-muted-foreground">🗣️ Debate: "{cfg.topic}" — Sides: {(cfg.sides || ["For", "Against"]).join(", ")}</div>;
+  }
+  if (block.block_type === "peer_review" && cfg?.prompt) {
+    return <div className="mt-2 p-3 rounded-lg bg-secondary text-sm text-muted-foreground">👥 Peer Review: "{cfg.prompt}"</div>;
+  }
+  if (block.block_type === "group_challenge" && cfg?.prompt) {
+    return <div className="mt-2 p-3 rounded-lg bg-secondary text-sm text-muted-foreground">🏆 Group Challenge: "{cfg.prompt}"{cfg.group_size ? ` (groups of ${cfg.group_size})` : ""}</div>;
   }
   if (block.block_type === "poll" && Array.isArray(cfg?.options)) {
     return (
