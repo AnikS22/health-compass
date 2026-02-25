@@ -364,8 +364,8 @@ export default function TeacherLiveSession() {
                       <span className="text-3xl">💡</span>
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground">{String((config.key_idea as string) ?? "")}</h3>
-                      {config.detail && <p className="text-lg text-muted-foreground mt-2">{String(config.detail)}</p>}
+                      <h3 className="text-2xl font-bold text-foreground">{String(config.key_idea ?? "")}</h3>
+                      {config.detail && <p className="text-lg text-muted-foreground mt-2">{String(config.detail ?? "")}</p>}
                     </div>
                   </div>
                 </div>
