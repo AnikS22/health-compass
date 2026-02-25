@@ -251,9 +251,9 @@ export default function ManageSchools() {
             className="w-full px-4 py-2.5 bg-background border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
           <input placeholder="Slug (e.g. fau)" value={newSlug} onChange={e => setNewSlug(e.target.value)}
             className="w-full px-4 py-2.5 bg-background border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-          <input placeholder="Email domain for auto-sorting (e.g. adhus.fau.edu)" value={newDomain} onChange={e => setNewDomain(e.target.value)}
+          <input placeholder="Email domain for auto-sorting (optional, e.g. fau.edu)" value={newDomain} onChange={e => setNewDomain(e.target.value)}
             className="w-full px-4 py-2.5 bg-background border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-          <p className="text-xs text-muted-foreground">Teachers who sign up with this email domain will be auto-assigned to this school.</p>
+          <p className="text-xs text-muted-foreground">Optional — Users with matching .edu email domains will be auto-sorted to this school. Leave blank if not needed.</p>
           <button onClick={createOrg} disabled={creating}
             className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50">
             {creating ? "Creating…" : "Create"}
