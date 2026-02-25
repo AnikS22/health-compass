@@ -1,4 +1,5 @@
-import { Radio, Play, Square, Users, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Radio, Play, Square, Users, Clock, Eye } from "lucide-react";
 
 const sessions = [
   {
@@ -31,6 +32,8 @@ const sessions = [
 ];
 
 export default function LiveSessions() {
+  const navigate = useNavigate();
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -38,10 +41,22 @@ export default function LiveSessions() {
           <h1 className="text-2xl font-bold text-foreground">Live Sessions</h1>
           <p className="text-muted-foreground mt-1">Monitor and manage real-time classroom sessions.</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
-          <Play className="w-4 h-4" />
-          Start Session
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/lesson/preview")}
+            className="inline-flex items-center gap-2 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            <Eye className="w-4 h-4" />
+            Preview Lesson
+          </button>
+          <button
+            onClick={() => navigate("/live/host")}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            <Play className="w-4 h-4" />
+            Start Session
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">

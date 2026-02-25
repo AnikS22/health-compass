@@ -681,10 +681,13 @@ export type Database = {
           body: string | null
           config: Json
           created_at: string
+          hints: Json
           id: string
+          is_gate: boolean
           lesson_version_id: string
           mastery_rules: Json
           remediation_config: Json
+          remediation_target_block_id: string | null
           sequence_no: number
           title: string | null
         }
@@ -693,10 +696,13 @@ export type Database = {
           body?: string | null
           config?: Json
           created_at?: string
+          hints?: Json
           id?: string
+          is_gate?: boolean
           lesson_version_id: string
           mastery_rules?: Json
           remediation_config?: Json
+          remediation_target_block_id?: string | null
           sequence_no: number
           title?: string | null
         }
@@ -705,10 +711,13 @@ export type Database = {
           body?: string | null
           config?: Json
           created_at?: string
+          hints?: Json
           id?: string
+          is_gate?: boolean
           lesson_version_id?: string
           mastery_rules?: Json
           remediation_config?: Json
+          remediation_target_block_id?: string | null
           sequence_no?: number
           title?: string | null
         }
@@ -718,6 +727,13 @@ export type Database = {
             columns: ["lesson_version_id"]
             isOneToOne: false
             referencedRelation: "lesson_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_blocks_remediation_target_block_id_fkey"
+            columns: ["remediation_target_block_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_blocks"
             referencedColumns: ["id"]
           },
         ]
@@ -1707,6 +1723,10 @@ export type Database = {
         | "drawing"
         | "red_team"
         | "exit_ticket"
+        | "concept_reveal"
+        | "micro_challenge"
+        | "reasoning_response"
+        | "peer_compare"
       enrollment_status: "active" | "invited" | "removed"
       moderation_reason: "pii" | "profanity" | "safety" | "other"
       moderation_resolution_status: "open" | "resolved" | "dismissed"
@@ -1862,6 +1882,10 @@ export const Constants = {
         "drawing",
         "red_team",
         "exit_ticket",
+        "concept_reveal",
+        "micro_challenge",
+        "reasoning_response",
+        "peer_compare",
       ],
       enrollment_status: ["active", "invited", "removed"],
       moderation_reason: ["pii", "profanity", "safety", "other"],
