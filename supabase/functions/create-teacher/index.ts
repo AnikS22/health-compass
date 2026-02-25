@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const VALID_ROLES = ["student", "teacher", "school_admin", "ethics_admin", "curriculum_admin"];
@@ -25,10 +26,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const anonClient = createClient(supabaseUrl, anonKey);
-    const { data: { user: caller } } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
-    if (!caller) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user: caller }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !caller) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     // Check caller is ethics_admin
     const { data: callerApp } = await supabase.from("users").select("id").eq("auth_user_id", caller.id).single();
     if (!callerApp) {
-      return new Response(JSON.stringify({ error: "User not found" }), {
+      return new Response(JSON.stringify({ error: "User not found in app" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -55,26 +55,40 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return new Response(JSON.stringify({ error: "Invalid email format" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (password.length < 6) {
+      return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const assignRole = role && VALID_ROLES.includes(role) ? role : "student";
 
     // Create the auth user
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
+    const { data: authData, error: createError } = await supabase.auth.admin.createUser({
+      email: email.trim(),
       password,
       email_confirm: true,
-      user_metadata: { full_name, role: assignRole },
+      user_metadata: { full_name: full_name.trim(), role: assignRole },
       app_metadata: { organization_id: organization_id || undefined },
     });
 
-    if (authError) {
-      return new Response(JSON.stringify({ error: authError.message }), {
+    if (createError) {
+      return new Response(JSON.stringify({ error: createError.message }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (authData.user) {
       // Wait for trigger to fire
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 800));
 
       // Ensure organization is set if provided
       if (organization_id) {
