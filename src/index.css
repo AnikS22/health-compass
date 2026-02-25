@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* White & Gold / Yellow-Neared Theme */
+    --background: 0 0% 98%;
+    --foreground: 220 15% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+
+    --primary: 43 96% 56%;
+    --primary-foreground: 43 100% 10%;
+
+    --secondary: 40 30% 95%;
+    --secondary-foreground: 220 15% 25%;
+
+    --muted: 40 20% 94%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 43 90% 50%;
+    --accent-foreground: 43 100% 10%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 100% 10%;
+
+    --border: 40 15% 88%;
+    --input: 40 15% 88%;
+    --ring: 43 96% 56%;
+
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 220 15% 25%;
+    --sidebar-border: 40 15% 90%;
+    --sidebar-active: 43 96% 95%;
+
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    min-height: 100vh;
+  }
+}
