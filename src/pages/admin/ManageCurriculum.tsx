@@ -173,17 +173,169 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
       </div>
     );
   }
-  if (blockType === "scenario" || blockType === "dilemma_tree") {
+  if (blockType === "scenario") {
     return (
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-foreground">Scenario/Dilemma Config (JSON)</label>
-        <textarea value={JSON.stringify(config, null, 2)} rows={6}
-          onChange={e => { try { onChange(JSON.parse(e.target.value)); } catch {} }}
+        <label className="text-xs font-semibold text-foreground">Scenario Description</label>
+        <textarea value={config.description || ""} onChange={e => onChange({ ...config, description: e.target.value })} rows={3}
+          placeholder="Describe the ethical scenario..."
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Choices (JSON array of {`{id, text, outcome}`})</label>
+        <textarea value={JSON.stringify(config.choices || [], null, 2)} rows={5}
+          onChange={e => { try { onChange({ ...config, choices: JSON.parse(e.target.value) }); } catch {} }}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Debrief / Reflection Prompt (optional)</label>
+        <textarea value={config.debrief || ""} onChange={e => onChange({ ...config, debrief: e.target.value })} rows={2}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+      </div>
+    );
+  }
+  if (blockType === "dilemma_tree") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Root Dilemma Question</label>
+        <textarea value={config.root_question || ""} onChange={e => onChange({ ...config, root_question: e.target.value })} rows={2}
+          placeholder="Present the ethical dilemma..."
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Decision Tree (JSON)</label>
+        <textarea value={JSON.stringify(config.tree || [], null, 2)} rows={6}
+          onChange={e => { try { onChange({ ...config, tree: JSON.parse(e.target.value) }); } catch {} }}
+          placeholder={'[\n  {"id":"a","text":"Choice A","next":"b"},\n  {"id":"b","text":"Follow-up","next":null}\n]'}
           className="w-full px-3 py-2 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
       </div>
     );
   }
-  // Fallback: raw JSON editor for other types
+  if (blockType === "drag_drop") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Instructions</label>
+        <textarea value={config.instructions || ""} onChange={e => onChange({ ...config, instructions: e.target.value })} rows={2}
+          placeholder="Drag items to the correct category..."
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Categories (comma-separated)</label>
+        <input value={(config.categories || []).join(", ")} onChange={e => onChange({ ...config, categories: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean) })}
+          placeholder="Category A, Category B"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Items (JSON array of {`{id, text, correct_category}`})</label>
+        <textarea value={JSON.stringify(config.items || [], null, 2)} rows={5}
+          onChange={e => { try { onChange({ ...config, items: JSON.parse(e.target.value) }); } catch {} }}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
+      </div>
+    );
+  }
+  if (blockType === "matching") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Instructions</label>
+        <input value={config.instructions || ""} onChange={e => onChange({ ...config, instructions: e.target.value })}
+          placeholder="Match each item on the left with the correct item on the right"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Pairs (JSON array of {`{left, right}`})</label>
+        <textarea value={JSON.stringify(config.pairs || [], null, 2)} rows={5}
+          onChange={e => { try { onChange({ ...config, pairs: JSON.parse(e.target.value) }); } catch {} }}
+          placeholder={'[\n  {"left": "Term 1", "right": "Definition 1"},\n  {"left": "Term 2", "right": "Definition 2"}\n]'}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
+      </div>
+    );
+  }
+  if (blockType === "debate") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Debate Topic / Motion</label>
+        <textarea value={config.topic || ""} onChange={e => onChange({ ...config, topic: e.target.value })} rows={2}
+          placeholder="e.g. 'AI should be regulated by governments'"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Sides (comma-separated)</label>
+        <input value={(config.sides || []).join(", ")} onChange={e => onChange({ ...config, sides: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean) })}
+          placeholder="For, Against"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Time Limit (seconds, optional)</label>
+        <input type="number" value={config.time_limit_seconds || ""} onChange={e => onChange({ ...config, time_limit_seconds: e.target.value ? parseInt(e.target.value) : undefined })}
+          placeholder="120"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+      </div>
+    );
+  }
+  if (blockType === "group_board" || blockType === "collaborative_board") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Board Prompt</label>
+        <textarea value={config.prompt || ""} onChange={e => onChange({ ...config, prompt: e.target.value })} rows={2}
+          placeholder="What should students collaborate on?"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Max Posts per Student (optional)</label>
+        <input type="number" value={config.max_posts || ""} onChange={e => onChange({ ...config, max_posts: e.target.value ? parseInt(e.target.value) : undefined })}
+          placeholder="5"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          <input type="checkbox" checked={!!config.allow_reactions} onChange={e => onChange({ ...config, allow_reactions: e.target.checked })} />
+          Allow reactions / voting
+        </label>
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          <input type="checkbox" checked={!!config.anonymous} onChange={e => onChange({ ...config, anonymous: e.target.checked })} />
+          Anonymous posts
+        </label>
+      </div>
+    );
+  }
+  if (blockType === "drawing") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Drawing Prompt</label>
+        <textarea value={config.prompt || ""} onChange={e => onChange({ ...config, prompt: e.target.value })} rows={2}
+          placeholder="Draw or illustrate your response..."
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Background Image URL (optional)</label>
+        <input value={config.background_url || ""} onChange={e => onChange({ ...config, background_url: e.target.value })}
+          placeholder="https://..."
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          <input type="checkbox" checked={!!config.allow_text} onChange={e => onChange({ ...config, allow_text: e.target.checked })} />
+          Allow text annotations
+        </label>
+      </div>
+    );
+  }
+  if (blockType === "red_team") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">AI System / Prompt to Red-Team</label>
+        <textarea value={config.system_prompt || ""} onChange={e => onChange({ ...config, system_prompt: e.target.value })} rows={3}
+          placeholder="Describe the AI system students will try to find flaws in..."
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Success Criteria</label>
+        <textarea value={config.success_criteria || ""} onChange={e => onChange({ ...config, success_criteria: e.target.value })} rows={2}
+          placeholder="What counts as a successful red-team attempt?"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Max Attempts (optional)</label>
+        <input type="number" value={config.max_attempts || ""} onChange={e => onChange({ ...config, max_attempts: e.target.value ? parseInt(e.target.value) : undefined })}
+          placeholder="5"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+      </div>
+    );
+  }
+  if (blockType === "exit_ticket") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Exit Ticket Question</label>
+        <textarea value={config.question || ""} onChange={e => onChange({ ...config, question: e.target.value })} rows={2}
+          placeholder="What is the most important thing you learned today?"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Response Type</label>
+        <select value={config.response_type || "text"} onChange={e => onChange({ ...config, response_type: e.target.value })}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground">
+          <option value="text">Free text</option>
+          <option value="rating">Rating (1-5)</option>
+          <option value="emoji">Emoji reaction</option>
+        </select>
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          <input type="checkbox" checked={!!config.include_confidence} onChange={e => onChange({ ...config, include_confidence: e.target.checked })} />
+          Ask for confidence level
+        </label>
+      </div>
+    );
+  }
+  // Fallback: raw JSON editor for unknown types
   return (
     <div className="space-y-2">
       <label className="text-xs font-semibold text-foreground">Config (JSON)</label>
@@ -362,16 +514,10 @@ export default function ManageCurriculum() {
   async function createBlock() {
     if (!form.block_type || !selectedVersion) return;
     const maxSeq = Math.max(0, ...blocks.map(b => b.sequence_no));
-    let config: any = {};
-    if (form.block_type === "video" && form.youtube_url) config.youtube_url = form.youtube_url;
-    if (form.block_type === "mcq" || form.block_type === "multi_select") {
-      config.options = form.options ? form.options.split("\n").filter((o: string) => o.trim()) : [];
-      config.correct_answer = form.correct_answer || "";
-    }
     await supabase.from("lesson_blocks").insert({
       lesson_version_id: selectedVersion, block_type: form.block_type,
       title: form.title?.trim() || null, body: form.body?.trim() || null,
-      config, sequence_no: maxSeq + 1
+      config: form.config || {}, sequence_no: maxSeq + 1
     });
     setShowCreateBlock(false); setForm({}); loadBlocks(selectedVersion);
   }
@@ -689,7 +835,7 @@ export default function ManageCurriculum() {
               {showCreateBlock && (
                 <div className="bg-card border border-border rounded-xl p-4 space-y-3">
                   <h4 className="font-bold text-foreground text-sm">New Activity Block</h4>
-                  <select value={form.block_type || ""} onChange={e => setForm({ ...form, block_type: e.target.value })}
+                  <select value={form.block_type || ""} onChange={e => setForm({ ...form, block_type: e.target.value, config: {} })}
                     className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground">
                     <option value="">Select type…</option>
                     {BLOCK_TYPES.map(bt => <option key={bt} value={bt}>{bt.replace(/_/g, " ")}</option>)}
@@ -698,22 +844,8 @@ export default function ManageCurriculum() {
                     className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
                   <textarea placeholder="Body / instructions" value={form.body || ""} onChange={e => setForm({ ...form, body: e.target.value })} rows={3}
                     className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
-                  {form.block_type === "video" && (
-                    <div>
-                      <label className="text-xs font-semibold text-foreground mb-1 block">YouTube URL</label>
-                      <input placeholder="https://youtube.com/watch?v=..." value={form.youtube_url || ""} onChange={e => setForm({ ...form, youtube_url: e.target.value })}
-                        className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-                      {form.youtube_url && <YouTubeEmbed url={form.youtube_url} />}
-                    </div>
-                  )}
-                  {(form.block_type === "mcq" || form.block_type === "multi_select") && (
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-foreground block">Options (one per line)</label>
-                      <textarea placeholder={"Option A\nOption B\nOption C\nOption D"} value={form.options || ""} onChange={e => setForm({ ...form, options: e.target.value })} rows={4}
-                        className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none font-mono" />
-                      <input placeholder="Correct answer" value={form.correct_answer || ""} onChange={e => setForm({ ...form, correct_answer: e.target.value })}
-                        className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-                    </div>
+                  {form.block_type && (
+                    <BlockConfigEditor blockType={form.block_type} config={form.config || {}} onChange={c => setForm({ ...form, config: c })} />
                   )}
                   <div className="flex gap-2">
                     <button onClick={createBlock} className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold">Add Block</button>
