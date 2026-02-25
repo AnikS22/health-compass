@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  BookOpen, ChevronRight, Plus, Trash2, Edit2, Save, X, Play,
-  Layers, FileText, Video, HelpCircle, MessageSquare, ArrowUp, ArrowDown,
-  ChevronDown, ChevronUp, GripVertical
+  BookOpen, ChevronRight, Plus, Trash2, Save, X, Play,
+  Layers, FileText, Video, HelpCircle, MessageSquare,
+  ChevronDown, ChevronUp, Edit2, Eye
 } from "lucide-react";
 
 type Pkg = { id: string; package_key: string; title: string };
@@ -17,6 +18,7 @@ type Lesson = {
 type Block = {
   id: string; title: string | null; block_type: string; sequence_no: number;
   body: string | null; config: any; lesson_version_id: string;
+  hints: any; is_gate: boolean; mastery_rules: any;
 };
 
 const BLOCK_TYPES = [
@@ -51,7 +53,197 @@ function YouTubeEmbed({ url }: { url: string }) {
   );
 }
 
+/* ── Block Config Editor: renders type-specific fields ── */
+function BlockConfigEditor({ blockType, config, onChange }: { blockType: string; config: any; onChange: (c: any) => void }) {
+  if (blockType === "video") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">YouTube URL</label>
+        <input value={config.youtube_url || ""} onChange={e => onChange({ ...config, youtube_url: e.target.value })}
+          placeholder="https://youtube.com/watch?v=..."
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        {config.youtube_url && <YouTubeEmbed url={config.youtube_url} />}
+      </div>
+    );
+  }
+  if (blockType === "mcq" || blockType === "multi_select") {
+    const options = Array.isArray(config.options) ? config.options : [];
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Options (one per line)</label>
+        <textarea value={options.join("\n")} rows={4}
+          onChange={e => onChange({ ...config, options: e.target.value.split("\n").filter((o: string) => o.trim()) })}
+          placeholder={"Option A\nOption B\nOption C"}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none font-mono" />
+        <input value={config.correct_answer || ""} onChange={e => onChange({ ...config, correct_answer: e.target.value })}
+          placeholder="Correct answer (must match an option exactly)"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+      </div>
+    );
+  }
+  if (blockType === "concept_reveal") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Key Idea</label>
+        <input value={config.key_idea || ""} onChange={e => onChange({ ...config, key_idea: e.target.value })}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Detail (optional)</label>
+        <textarea value={config.detail || ""} onChange={e => onChange({ ...config, detail: e.target.value })} rows={2}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Visual URL (optional)</label>
+        <input value={config.visual_url || ""} onChange={e => onChange({ ...config, visual_url: e.target.value })}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+      </div>
+    );
+  }
+  if (blockType === "micro_challenge") {
+    const options = Array.isArray(config.options) ? config.options : [];
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Question</label>
+        <input value={config.question || ""} onChange={e => onChange({ ...config, question: e.target.value })}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Options (JSON array of {`{id, text}`})</label>
+        <textarea value={JSON.stringify(options, null, 2)} rows={4}
+          onChange={e => { try { onChange({ ...config, options: JSON.parse(e.target.value) }); } catch {} }}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <input value={config.correct_option_id || ""} onChange={e => onChange({ ...config, correct_option_id: e.target.value })}
+          placeholder="Correct option ID"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Explanation</label>
+        <textarea value={config.explanation || ""} onChange={e => onChange({ ...config, explanation: e.target.value })} rows={2}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+      </div>
+    );
+  }
+  if (blockType === "reasoning_response") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Prompt</label>
+        <textarea value={config.prompt || ""} onChange={e => onChange({ ...config, prompt: e.target.value })} rows={3}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <input type="number" value={config.min_words || ""} onChange={e => onChange({ ...config, min_words: e.target.value ? parseInt(e.target.value) : undefined })}
+          placeholder="Min words (optional)"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="text-xs font-semibold text-foreground">Exemplar Answer (optional)</label>
+        <textarea value={config.exemplar || ""} onChange={e => onChange({ ...config, exemplar: e.target.value })} rows={2}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+      </div>
+    );
+  }
+  if (blockType === "peer_compare") {
+    const options = Array.isArray(config.options) ? config.options : [];
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Prompt</label>
+        <textarea value={config.prompt || ""} onChange={e => onChange({ ...config, prompt: e.target.value })} rows={2}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <label className="text-xs font-semibold text-foreground">Options (JSON, optional)</label>
+        <textarea value={JSON.stringify(options, null, 2)} rows={3}
+          onChange={e => { try { onChange({ ...config, options: JSON.parse(e.target.value) }); } catch {} }}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          <input type="checkbox" checked={!!config.show_distribution} onChange={e => onChange({ ...config, show_distribution: e.target.checked })} />
+          Show distribution to students
+        </label>
+      </div>
+    );
+  }
+  if (blockType === "poll") {
+    const options = Array.isArray(config.options) ? config.options : [];
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Poll Question (use Body field above)</label>
+        <label className="text-xs font-semibold text-foreground">Options (one per line)</label>
+        <textarea value={options.join("\n")} rows={4}
+          onChange={e => onChange({ ...config, options: e.target.value.split("\n").filter((o: string) => o.trim()) })}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none font-mono" />
+      </div>
+    );
+  }
+  if (blockType === "short_answer") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Prompt</label>
+        <textarea value={config.prompt || ""} onChange={e => onChange({ ...config, prompt: e.target.value })} rows={2}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+        <input type="number" value={config.min_words || ""} onChange={e => onChange({ ...config, min_words: e.target.value ? parseInt(e.target.value) : undefined })}
+          placeholder="Min words (optional)"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+      </div>
+    );
+  }
+  if (blockType === "scenario" || blockType === "dilemma_tree") {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-foreground">Scenario/Dilemma Config (JSON)</label>
+        <textarea value={JSON.stringify(config, null, 2)} rows={6}
+          onChange={e => { try { onChange(JSON.parse(e.target.value)); } catch {} }}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
+      </div>
+    );
+  }
+  // Fallback: raw JSON editor for other types
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-semibold text-foreground">Config (JSON)</label>
+      <textarea value={JSON.stringify(config, null, 2)} rows={5}
+        onChange={e => { try { onChange(JSON.parse(e.target.value)); } catch {} }}
+        className="w-full px-3 py-2 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
+    </div>
+  );
+}
+
+/* ── Block Preview (read-only view) ── */
+function BlockPreview({ block }: { block: Block }) {
+  const cfg = block.config as any;
+  if (block.block_type === "video" && cfg?.youtube_url) return <YouTubeEmbed url={cfg.youtube_url} />;
+  if ((block.block_type === "mcq" || block.block_type === "multi_select") && Array.isArray(cfg?.options)) {
+    return (
+      <div className="mt-2 space-y-1">
+        {(cfg.options as string[]).map((opt, i) => (
+          <div key={i} className={`px-3 py-1.5 rounded-lg text-xs ${opt === cfg.correct_answer ? "bg-green-500/10 text-green-600 font-bold" : "bg-secondary text-muted-foreground"}`}>
+            {opt}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (block.block_type === "concept_reveal" && cfg?.key_idea) {
+    return <div className="mt-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm"><strong>Key Idea:</strong> {cfg.key_idea}</div>;
+  }
+  if (block.block_type === "micro_challenge" && cfg?.question) {
+    return (
+      <div className="mt-2 space-y-1">
+        <p className="text-sm font-medium text-foreground">{cfg.question}</p>
+        {Array.isArray(cfg.options) && cfg.options.map((o: any) => (
+          <div key={o.id} className={`px-3 py-1.5 rounded-lg text-xs ${o.id === cfg.correct_option_id ? "bg-green-500/10 text-green-600 font-bold" : "bg-secondary text-muted-foreground"}`}>
+            {o.text}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if ((block.block_type === "reasoning_response" || block.block_type === "short_answer") && cfg?.prompt) {
+    return <div className="mt-2 p-3 rounded-lg bg-secondary text-sm text-muted-foreground italic">"{cfg.prompt}"</div>;
+  }
+  if (block.block_type === "peer_compare" && cfg?.prompt) {
+    return <div className="mt-2 p-3 rounded-lg bg-secondary text-sm text-muted-foreground italic">"{cfg.prompt}"</div>;
+  }
+  if (block.block_type === "poll" && Array.isArray(cfg?.options)) {
+    return (
+      <div className="mt-2 space-y-1">
+        {(cfg.options as string[]).map((opt, i) => (
+          <div key={i} className="px-3 py-1.5 rounded-lg text-xs bg-secondary text-muted-foreground">{opt}</div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
 export default function ManageCurriculum() {
+  const navigate = useNavigate();
   const [packages, setPackages] = useState<Pkg[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -64,14 +256,17 @@ export default function ManageCurriculum() {
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
   const [expandedUnit, setExpandedUnit] = useState<string | null>(null);
 
+  // Editing
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{ title: string; body: string; config: any }>({ title: "", body: "", config: {} });
+  const [saving, setSaving] = useState(false);
+
   // Create dialogs
   const [showCreatePkg, setShowCreatePkg] = useState(false);
   const [showCreateCourse, setShowCreateCourse] = useState(false);
   const [showCreateUnit, setShowCreateUnit] = useState(false);
   const [showCreateLesson, setShowCreateLesson] = useState(false);
   const [showCreateBlock, setShowCreateBlock] = useState(false);
-
-  // Form state
   const [form, setForm] = useState<any>({});
 
   const loadAll = useCallback(async () => {
@@ -93,6 +288,7 @@ export default function ManageCurriculum() {
     setSelectedLesson(null);
     setSelectedVersion(null);
     setBlocks([]);
+    setEditingBlockId(null);
     const courseUnits = units.filter(u => u.course_id === courseId);
     if (courseUnits.length === 0) { setLessons([]); return; }
     const unitIds = courseUnits.map(u => u.id);
@@ -114,13 +310,14 @@ export default function ManageCurriculum() {
 
   async function loadBlocks(versionId: string) {
     setSelectedVersion(versionId);
+    setEditingBlockId(null);
     const { data } = await supabase
-      .from("lesson_blocks").select("id, title, block_type, sequence_no, body, config, lesson_version_id")
+      .from("lesson_blocks").select("id, title, block_type, sequence_no, body, config, lesson_version_id, hints, is_gate, mastery_rules")
       .eq("lesson_version_id", versionId).order("sequence_no");
     setBlocks(data ?? []);
   }
 
-  // CRUD helpers
+  // ── CRUD ──
   async function createPackage() {
     if (!form.title?.trim() || !form.package_key?.trim()) return;
     await supabase.from("curriculum_packages").insert({ title: form.title.trim(), package_key: form.package_key.trim() });
@@ -165,10 +362,8 @@ export default function ManageCurriculum() {
   async function createBlock() {
     if (!form.block_type || !selectedVersion) return;
     const maxSeq = Math.max(0, ...blocks.map(b => b.sequence_no));
-    const config: any = {};
-    if (form.block_type === "video" && form.youtube_url) {
-      config.youtube_url = form.youtube_url;
-    }
+    let config: any = {};
+    if (form.block_type === "video" && form.youtube_url) config.youtube_url = form.youtube_url;
     if (form.block_type === "mcq" || form.block_type === "multi_select") {
       config.options = form.options ? form.options.split("\n").filter((o: string) => o.trim()) : [];
       config.correct_answer = form.correct_answer || "";
@@ -188,7 +383,6 @@ export default function ManageCurriculum() {
   }
 
   async function deleteLesson(lessonId: string) {
-    // Delete versions and blocks first
     const { data: versions } = await supabase.from("lesson_versions").select("id").eq("lesson_id", lessonId);
     if (versions) {
       for (const v of versions) {
@@ -208,6 +402,45 @@ export default function ManageCurriculum() {
       published_at: newStatus === "published" ? new Date().toISOString() : null
     }).eq("id", versionId);
     if (selectedCourse) loadCourseLessons(selectedCourse);
+  }
+
+  // ── Edit block ──
+  function startEditBlock(block: Block) {
+    setEditingBlockId(block.id);
+    setEditForm({ title: block.title || "", body: block.body || "", config: { ...block.config } });
+  }
+
+  async function saveBlock(blockId: string) {
+    setSaving(true);
+    await supabase.from("lesson_blocks").update({
+      title: editForm.title.trim() || null,
+      body: editForm.body.trim() || null,
+      config: editForm.config,
+    }).eq("id", blockId);
+    setSaving(false);
+    setEditingBlockId(null);
+    if (selectedVersion) loadBlocks(selectedVersion);
+  }
+
+  // ── Move block up/down ──
+  async function moveBlock(blockId: string, direction: "up" | "down") {
+    const idx = blocks.findIndex(b => b.id === blockId);
+    if (idx < 0) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= blocks.length) return;
+    const a = blocks[idx], b = blocks[swapIdx];
+    await Promise.all([
+      supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", a.id),
+      supabase.from("lesson_blocks").update({ sequence_no: a.sequence_no }).eq("id", b.id),
+    ]);
+    if (selectedVersion) loadBlocks(selectedVersion);
+  }
+
+  // ── Preview lesson in StepRunner ──
+  function previewLesson() {
+    if (!selectedVersion) return;
+    // Open in a new tab pointing to the lesson preview with version param
+    window.open(`/lesson/preview?versionId=${selectedVersion}`, "_blank");
   }
 
   if (loading) return <div className="p-6 text-muted-foreground text-sm">Loading curriculum…</div>;
@@ -427,6 +660,10 @@ export default function ManageCurriculum() {
                     </div>
                   </div>
                   <div className="flex gap-1.5">
+                    <button onClick={previewLesson}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-secondary text-foreground hover:bg-secondary/80 transition-colors">
+                      <Eye className="w-3.5 h-3.5" /> Preview
+                    </button>
                     {selectedLesson.versions.map(v => (
                       <button key={v.id} onClick={() => togglePublish(v.id, v.publish_status)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${v.publish_status === "published" ? "bg-green-500/10 text-green-600 hover:bg-green-500/20" : "bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20"}`}>
@@ -455,15 +692,12 @@ export default function ManageCurriculum() {
                   <select value={form.block_type || ""} onChange={e => setForm({ ...form, block_type: e.target.value })}
                     className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground">
                     <option value="">Select type…</option>
-                    {BLOCK_TYPES.map(bt => (
-                      <option key={bt} value={bt}>{bt.replace(/_/g, " ")}</option>
-                    ))}
+                    {BLOCK_TYPES.map(bt => <option key={bt} value={bt}>{bt.replace(/_/g, " ")}</option>)}
                   </select>
                   <input placeholder="Block title (optional)" value={form.title || ""} onChange={e => setForm({ ...form, title: e.target.value })}
                     className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
                   <textarea placeholder="Body / instructions" value={form.body || ""} onChange={e => setForm({ ...form, body: e.target.value })} rows={3}
                     className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
-
                   {form.block_type === "video" && (
                     <div>
                       <label className="text-xs font-semibold text-foreground mb-1 block">YouTube URL</label>
@@ -472,7 +706,6 @@ export default function ManageCurriculum() {
                       {form.youtube_url && <YouTubeEmbed url={form.youtube_url} />}
                     </div>
                   )}
-
                   {(form.block_type === "mcq" || form.block_type === "multi_select") && (
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-foreground block">Options (one per line)</label>
@@ -482,7 +715,6 @@ export default function ManageCurriculum() {
                         className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
                     </div>
                   )}
-
                   <div className="flex gap-2">
                     <button onClick={createBlock} className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold">Add Block</button>
                     <button onClick={() => setShowCreateBlock(false)} className="px-3 py-1.5 bg-secondary text-foreground rounded-lg text-xs font-bold">Cancel</button>
@@ -490,39 +722,69 @@ export default function ManageCurriculum() {
                 </div>
               )}
 
-              {blocks.map(block => (
+              {blocks.map((block, idx) => (
                 <div key={block.id} className="bg-card border border-border rounded-xl p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary">
-                        {blockIcon(block.block_type)}
-                      </span>
-                      <div>
-                        <span className="font-medium text-sm text-foreground">
-                          {block.title || block.block_type.replace(/_/g, " ")}
-                        </span>
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium">
-                          {block.block_type.replace(/_/g, " ")}
-                        </span>
-                      </div>
-                    </div>
-                    <button onClick={() => deleteBlock(block.id)}
-                      className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  {block.body && <p className="mt-2 text-xs text-muted-foreground">{block.body}</p>}
-                  {block.block_type === "video" && (block.config as any)?.youtube_url && (
-                    <YouTubeEmbed url={(block.config as any).youtube_url} />
-                  )}
-                  {(block.block_type === "mcq" || block.block_type === "multi_select") && (block.config as any)?.options && (
-                    <div className="mt-2 space-y-1">
-                      {((block.config as any).options as string[]).map((opt, i) => (
-                        <div key={i} className={`px-3 py-1.5 rounded-lg text-xs ${opt === (block.config as any).correct_answer ? "bg-green-500/10 text-green-600 font-bold" : "bg-secondary text-muted-foreground"}`}>
-                          {opt}
+                  {editingBlockId === block.id ? (
+                    /* ── Edit Mode ── */
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-primary uppercase">{block.block_type.replace(/_/g, " ")} — Editing</span>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => saveBlock(block.id)} disabled={saving}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+                            <Save className="w-3 h-3" /> {saving ? "Saving…" : "Save"}
+                          </button>
+                          <button onClick={() => setEditingBlockId(null)}
+                            className="px-2.5 py-1 bg-secondary text-foreground rounded-lg text-xs font-bold">Cancel</button>
                         </div>
-                      ))}
+                      </div>
+                      <input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                        placeholder="Block title"
+                        className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                      <textarea value={editForm.body} onChange={e => setEditForm({ ...editForm, body: e.target.value })}
+                        placeholder="Body / instructions" rows={3}
+                        className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+                      <BlockConfigEditor blockType={block.block_type} config={editForm.config} onChange={c => setEditForm({ ...editForm, config: c })} />
                     </div>
+                  ) : (
+                    /* ── View Mode ── */
+                    <>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary">
+                            {blockIcon(block.block_type)}
+                          </span>
+                          <div>
+                            <span className="font-medium text-sm text-foreground">
+                              {block.title || block.block_type.replace(/_/g, " ")}
+                            </span>
+                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium">
+                              {block.block_type.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => moveBlock(block.id, "up")} disabled={idx === 0}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors" title="Move up">
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => moveBlock(block.id, "down")} disabled={idx === blocks.length - 1}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors" title="Move down">
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => startEditBlock(block)}
+                            className="p-1 rounded text-muted-foreground hover:text-primary transition-colors" title="Edit">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => deleteBlock(block.id)}
+                            className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors" title="Delete">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {block.body && <p className="mt-2 text-xs text-muted-foreground">{block.body}</p>}
+                      <BlockPreview block={block} />
+                    </>
                   )}
                 </div>
               ))}
