@@ -1754,7 +1754,12 @@ export type Database = {
         | "board_post"
       participant_join_kind: "account" | "guest"
       publish_status: "draft" | "published" | "archived"
-      role_key: "student" | "teacher" | "school_admin" | "ethics_admin"
+      role_key:
+        | "student"
+        | "teacher"
+        | "school_admin"
+        | "ethics_admin"
+        | "curriculum_admin"
       step_status: "locked" | "unlocked" | "completed" | "retry"
     }
     CompositeTypes: {
@@ -1917,7 +1922,13 @@ export const Constants = {
       ],
       participant_join_kind: ["account", "guest"],
       publish_status: ["draft", "published", "archived"],
-      role_key: ["student", "teacher", "school_admin", "ethics_admin"],
+      role_key: [
+        "student",
+        "teacher",
+        "school_admin",
+        "ethics_admin",
+        "curriculum_admin",
+      ],
       step_status: ["locked", "unlocked", "completed", "retry"],
     },
   },
