@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Scale, Radio, ArrowRight } from "lucide-react";
+import { Radio, ArrowRight, Podcast } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -34,13 +34,19 @@ export default function JoinSession() {
     // Register as participant
     if (appUserId) {
       const displayName = user?.user_metadata?.full_name || user?.email || "Student";
-      await supabase.from("live_session_participants").insert({
+      const { error: insertError } = await supabase.from("live_session_participants").insert({
         live_session_id: session.id,
         user_id: appUserId,
         organization_id: session.organization_id,
         display_name: displayName,
-        join_kind: "account",
+        join_kind: "account" as const,
       });
+
+      if (insertError) {
+        setStatus("Failed to join: " + insertError.message);
+        setLoading(false);
+        return;
+      }
     }
 
     navigate(`/live/student?session=${session.id}`);
@@ -48,21 +54,17 @@ export default function JoinSession() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
+    <div className="p-8 max-w-xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Join Live Session</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Enter the session code your teacher shared to join the live lesson.</p>
       </div>
 
-      <div className="relative w-full max-w-sm space-y-8 text-center">
-        <div>
-          <div className="w-16 h-16 rounded-3xl bg-primary mx-auto flex items-center justify-center mb-5 shadow-lg">
-            <Scale className="w-8 h-8 text-primary-foreground" />
+      <div className="bg-card rounded-2xl border border-border p-8 space-y-6">
+        <div className="flex items-center justify-center">
+          <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center">
+            <Podcast className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Join a Session</h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            Enter the session code your teacher shared.
-          </p>
         </div>
 
         <form onSubmit={handleJoin} className="space-y-4">
@@ -88,10 +90,12 @@ export default function JoinSession() {
         </form>
 
         {status && (
-          <p className="text-sm font-medium text-destructive">{status}</p>
+          <p className={`text-sm font-medium text-center ${status.includes("not found") || status.includes("Failed") ? "text-destructive" : "text-success"}`}>
+            {status}
+          </p>
         )}
 
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground text-center">
           Ask your teacher for the session code
         </p>
       </div>

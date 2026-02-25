@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ClipboardList, Calendar, Users, ChevronRight } from "lucide-react";
+import { ClipboardList, Calendar, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 type AssignmentRow = {
   id: string;
@@ -12,28 +13,48 @@ type AssignmentRow = {
 };
 
 export default function Assignments() {
+  const { role, appUserId } = useAuth();
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [classNames, setClassNames] = useState<Record<string, string>>({});
   const [versionLabels, setVersionLabels] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!appUserId) return;
     async function load() {
-      const { data: aData } = await supabase
+      let classIds: string[] = [];
+
+      // Students only see assignments for their enrolled classes
+      if (role === "student") {
+        const { data: enrollments } = await supabase
+          .from("class_enrollments")
+          .select("class_id")
+          .eq("user_id", appUserId!)
+          .eq("status", "active");
+        classIds = (enrollments ?? []).map((e) => e.class_id);
+        if (classIds.length === 0) { setLoading(false); return; }
+      }
+
+      let query = supabase
         .from("assignments")
         .select("id, due_at, created_at, class_id, lesson_version_id, assigned_by_user_id")
         .order("created_at", { ascending: false })
         .limit(50);
 
+      if (role === "student" && classIds.length > 0) {
+        query = query.in("class_id", classIds);
+      }
+
+      const { data: aData } = await query;
       const items = (aData ?? []) as AssignmentRow[];
       setAssignments(items);
 
       if (items.length > 0) {
-        const classIds = [...new Set(items.map((a) => a.class_id))];
+        const cIds = [...new Set(items.map((a) => a.class_id))];
         const lvIds = [...new Set(items.map((a) => a.lesson_version_id))];
 
         const [classRes, lvRes] = await Promise.all([
-          supabase.from("classes").select("id, name").in("id", classIds),
+          supabase.from("classes").select("id, name").in("id", cIds),
           supabase.from("lesson_versions").select("id, version_label").in("id", lvIds),
         ]);
 
@@ -48,7 +69,7 @@ export default function Assignments() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [appUserId, role]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-pulse text-muted-foreground text-sm">Loading assignments…</div></div>;
@@ -58,14 +79,18 @@ export default function Assignments() {
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Assignments</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Track lesson assignments and student progress.</p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {role === "student" ? "Your lesson assignments from enrolled classes." : "Track lesson assignments and student progress."}
+        </p>
       </div>
 
       {assignments.length === 0 ? (
         <div className="bg-card rounded-2xl border border-border p-12 text-center">
           <ClipboardList className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-foreground font-semibold">No assignments yet</p>
-          <p className="text-sm text-muted-foreground mt-1">Assignments will appear here once teachers create them.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {role === "student" ? "Assignments from your teacher will appear here." : "Assignments will appear here once created."}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
