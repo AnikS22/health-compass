@@ -81,18 +81,28 @@ export default function ManageUsers() {
     setCreating(true);
     setCreateError("");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("create-teacher", {
         body: {
-          email: form.email,
+          email: form.email.trim(),
           password: form.password,
-          full_name: form.full_name,
+          full_name: form.full_name.trim(),
           organization_id: form.organization_id || null,
           role: form.role,
         },
       });
       if (res.error) {
-        setCreateError(res.error.message || "Failed to create user");
+        // Try to parse the error body for a meaningful message
+        let msg = "Failed to create user";
+        try {
+          const body = typeof res.error === "object" && "context" in res.error
+            ? await (res.error as any).context?.json?.()
+            : null;
+          if (body?.error) msg = body.error;
+          else if (res.error.message) msg = res.error.message;
+        } catch {
+          if (res.error.message) msg = res.error.message;
+        }
+        setCreateError(msg);
       } else if (res.data?.error) {
         setCreateError(res.data.error);
       } else {
