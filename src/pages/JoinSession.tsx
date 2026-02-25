@@ -9,7 +9,7 @@ export default function JoinSession() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { user, appUserId } = useAuth();
+  const { user } = useAuth();
 
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault();
@@ -17,39 +17,28 @@ export default function JoinSession() {
     setLoading(true);
     setStatus("");
 
-    // Find session by code
-    const { data: session, error } = await supabase
-      .from("live_sessions")
-      .select("id, organization_id")
-      .eq("session_code", code.trim().toUpperCase())
-      .is("ended_at", null)
-      .maybeSingle();
+    const displayName = user?.user_metadata?.full_name || user?.email || "Student";
 
-    if (error || !session) {
-      setStatus("Session not found. Check the code and try again.");
+    const { data, error } = await supabase.rpc("join_live_session_by_code", {
+      p_code: code.trim().toUpperCase(),
+      p_display_name: displayName,
+    });
+
+    if (error) {
+      setStatus("Failed to join: " + error.message);
       setLoading(false);
       return;
     }
 
-    // Register as participant
-    if (appUserId) {
-      const displayName = user?.user_metadata?.full_name || user?.email || "Student";
-      const { error: insertError } = await supabase.from("live_session_participants").insert({
-        live_session_id: session.id,
-        user_id: appUserId,
-        organization_id: session.organization_id,
-        display_name: displayName,
-        join_kind: "account" as const,
-      });
+    const result = data as unknown as { ok: boolean; error?: string; session_id?: string };
 
-      if (insertError) {
-        setStatus("Failed to join: " + insertError.message);
-        setLoading(false);
-        return;
-      }
+    if (!result.ok) {
+      setStatus(result.error || "Session not found.");
+      setLoading(false);
+      return;
     }
 
-    navigate(`/live/student?session=${session.id}`);
+    navigate(`/live/student?session=${result.session_id}`);
     setLoading(false);
   }
 
@@ -90,7 +79,7 @@ export default function JoinSession() {
         </form>
 
         {status && (
-          <p className={`text-sm font-medium text-center ${status.includes("not found") || status.includes("Failed") ? "text-destructive" : "text-success"}`}>
+          <p className={`text-sm font-medium text-center ${status.includes("not found") || status.includes("Failed") || status.includes("error") ? "text-destructive" : "text-success"}`}>
             {status}
           </p>
         )}

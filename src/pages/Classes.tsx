@@ -102,37 +102,25 @@ export default function Classes() {
     if (!appUserId || !joinInput.trim()) return;
     setJoining(true); setJoinStatus("");
 
-    const { data: codeRow } = await supabase
-      .from("class_join_codes")
-      .select("id, class_id")
-      .eq("join_code", joinInput.trim().toUpperCase())
-      .eq("is_active", true)
-      .single();
+    const { data, error } = await supabase.rpc("join_class_by_code", {
+      p_code: joinInput.trim().toUpperCase(),
+    });
 
-    if (!codeRow) {
-      setJoinStatus("Invalid or expired code."); setJoining(false); return;
-    }
-
-    // Check if already enrolled
-    const { data: existing } = await supabase
-      .from("class_enrollments")
-      .select("user_id")
-      .eq("class_id", codeRow.class_id)
-      .eq("user_id", appUserId)
-      .maybeSingle();
-
-    if (existing) {
-      setJoinStatus("You're already enrolled in this class!"); setJoining(false); return;
-    }
-
-    const { error } = await supabase.from("class_enrollments").insert({ class_id: codeRow.class_id, user_id: appUserId, status: "active" });
     if (error) {
       setJoinStatus("Failed to join: " + error.message);
-    } else {
-      setJoinStatus("Successfully joined the class!");
-      setJoinInput("");
-      loadClasses();
+      setJoining(false);
+      return;
     }
+
+    const result = data as unknown as { ok: boolean; error?: string; class_id?: string };
+
+    if (!result.ok) {
+      setJoinStatus(result.error || "Invalid code."); setJoining(false); return;
+    }
+
+    setJoinStatus("Successfully joined the class!");
+    setJoinInput("");
+    loadClasses();
     setJoining(false);
   }
 
