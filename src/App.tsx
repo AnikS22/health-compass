@@ -1,4 +1,6 @@
 import { Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import AuthGuard from "./components/AuthGuard";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Classes from "./pages/Classes";
@@ -13,19 +15,21 @@ import TeacherLiveSession from "./pages/TeacherLiveSession";
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/lesson/preview" element={<LessonPreview />} />
-      <Route path="/live/host" element={<TeacherLiveSession />} />
-      <Route element={<Layout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/classes" element={<Classes />} />
-        <Route path="/curriculum" element={<Curriculum />} />
-        <Route path="/live" element={<LiveSessions />} />
-        <Route path="/assignments" element={<Assignments />} />
-        <Route path="/reports" element={<Reports />} />
-      </Route>
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/lesson/preview" element={<AuthGuard><LessonPreview /></AuthGuard>} />
+        <Route path="/live/host" element={<AuthGuard><TeacherLiveSession /></AuthGuard>} />
+        <Route element={<AuthGuard><Layout /></AuthGuard>}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/classes" element={<Classes />} />
+          <Route path="/curriculum" element={<Curriculum />} />
+          <Route path="/live" element={<LiveSessions />} />
+          <Route path="/assignments" element={<Assignments />} />
+          <Route path="/reports" element={<Reports />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AuthProvider>
   );
 }
