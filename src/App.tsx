@@ -15,6 +15,11 @@ import TeacherLiveSession from "./pages/TeacherLiveSession";
 import JoinSession from "./pages/JoinSession";
 import StudentLiveView from "./pages/StudentLiveView";
 import ClassDetail from "./pages/ClassDetail";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import ManageSchools from "./pages/admin/ManageSchools";
+import ManageTeachers from "./pages/admin/ManageTeachers";
+import ManageCurriculum from "./pages/admin/ManageCurriculum";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 export default function App() {
   return (
@@ -33,6 +38,12 @@ export default function App() {
           <Route path="/join" element={<JoinSession />} />
           <Route path="/assignments" element={<Assignments />} />
           <Route path="/reports" element={<Reports />} />
+          {/* Admin routes */}
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/schools" element={<ManageSchools />} />
+          <Route path="/admin/teachers" element={<ManageTeachers />} />
+          <Route path="/admin/curriculum" element={<ManageCurriculum />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
