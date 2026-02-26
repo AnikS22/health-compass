@@ -25,6 +25,7 @@ const teacherNav = [
 
 const studentNav = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/explore", icon: BookOpen, label: "Explore Curriculum" },
   { to: "/classes", icon: Users, label: "My Classes" },
   { to: "/join", icon: Podcast, label: "Join Session" },
   { to: "/assignments", icon: ClipboardList, label: "Assignments" },
