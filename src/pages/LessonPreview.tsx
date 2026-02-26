@@ -1,24 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import StepRunner from "../components/steps/StepRunner";
 import type { StepBlock, StepResponse, Hint } from "../components/steps/types";
 
 export default function LessonPreview() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { appUserId } = useAuth();
   const [steps, setSteps] = useState<StepBlock[]>([]);
   const [lessonTitle, setLessonTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [completed, setCompleted] = useState(false);
+  const isSelfPaced = searchParams.get("selfpaced") === "true";
+  const versionId = searchParams.get("versionId");
 
   useEffect(() => {
     async function loadLesson() {
-      const versionId = searchParams.get("versionId");
-
       if (versionId) {
-        // Load specific version by ID
         const { data: version, error: vErr } = await supabase
           .from("lesson_versions")
           .select("id, lesson_id, lessons!inner(title)")
@@ -57,11 +60,22 @@ export default function LessonPreview() {
           is_gate: b.is_gate,
           mastery_rules: (b.mastery_rules ?? {}) as Record<string, unknown>,
         })));
+
+        // Create self-paced attempt
+        if (isSelfPaced && appUserId) {
+          const { data: attempt } = await supabase
+            .from("independent_attempts")
+            .insert({ user_id: appUserId, lesson_version_id: versionId })
+            .select("id")
+            .single();
+          if (attempt) setAttemptId(attempt.id);
+        }
+
         setLoading(false);
         return;
       }
 
-      // Fallback: find latest published lesson with interactive blocks
+      // Fallback: find latest published lesson
       const { data: versions, error: vErr2 } = await supabase
         .from("lesson_versions")
         .select("id, lesson_id, lessons!inner(title)")
@@ -116,15 +130,32 @@ export default function LessonPreview() {
     }
 
     loadLesson();
-  }, [searchParams]);
+  }, [searchParams, appUserId, isSelfPaced, versionId]);
 
-  const handleStepComplete = useCallback((stepId: string, response: StepResponse) => {
-    console.log("Step completed:", stepId, response);
-  }, []);
+  const handleStepComplete = useCallback(
+    async (stepId: string, response: StepResponse) => {
+      // Save response for self-paced attempts
+      if (attemptId && appUserId) {
+        await supabase.from("attempt_responses").insert([{
+          independent_attempt_id: attemptId,
+          lesson_block_id: stepId,
+          user_id: appUserId,
+          response_payload: JSON.parse(JSON.stringify(response)),
+        }]);
+      }
+    },
+    [attemptId, appUserId]
+  );
 
-  const handleLessonComplete = useCallback(() => {
-    console.log("Lesson complete!");
-  }, []);
+  const handleLessonComplete = useCallback(async () => {
+    if (attemptId) {
+      await supabase
+        .from("independent_attempts")
+        .update({ completed_at: new Date().toISOString(), progress_percent: 100 })
+        .eq("id", attemptId);
+    }
+    setCompleted(true);
+  }, [attemptId]);
 
   if (loading) {
     return (
@@ -145,6 +176,26 @@ export default function LessonPreview() {
     );
   }
 
+  if (completed) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-md mx-auto p-8">
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="text-2xl font-extrabold text-foreground">Lesson Complete! 🎉</h2>
+          <p className="text-muted-foreground">Great work finishing <strong>{lessonTitle}</strong>. Your progress has been saved.</p>
+          <button
+            onClick={() => navigate("/explore")}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:opacity-90 transition-opacity"
+          >
+            Back to Curriculum
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-card">
@@ -155,7 +206,9 @@ export default function LessonPreview() {
           >
             <ArrowLeft className="w-5 h-5 text-muted-foreground" />
           </button>
-          <span className="text-sm font-medium text-muted-foreground">Lesson Preview</span>
+          <span className="text-sm font-medium text-muted-foreground">
+            {isSelfPaced ? "Self-Paced Lesson" : "Lesson Preview"}
+          </span>
         </div>
       </div>
       <div className="py-8">

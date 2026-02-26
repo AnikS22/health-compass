@@ -635,25 +635,28 @@ export type Database = {
       }
       independent_attempts: {
         Row: {
-          assignment_id: string
+          assignment_id: string | null
           completed_at: string | null
           id: string
+          lesson_version_id: string | null
           progress_percent: number
           started_at: string
           user_id: string
         }
         Insert: {
-          assignment_id: string
+          assignment_id?: string | null
           completed_at?: string | null
           id?: string
+          lesson_version_id?: string | null
           progress_percent?: number
           started_at?: string
           user_id: string
         }
         Update: {
-          assignment_id?: string
+          assignment_id?: string | null
           completed_at?: string | null
           id?: string
+          lesson_version_id?: string | null
           progress_percent?: number
           started_at?: string
           user_id?: string
@@ -664,6 +667,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "independent_attempts_lesson_version_id_fkey"
+            columns: ["lesson_version_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_versions"
             referencedColumns: ["id"]
           },
           {
