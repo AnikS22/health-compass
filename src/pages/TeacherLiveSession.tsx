@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { StepBlock, Hint } from "../components/steps/types";
 import type { Json } from "@/integrations/supabase/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import VideoEmbed from "@/components/VideoEmbed";
 
 type Participant = { id: string; display_name: string; joined_at: string };
 
@@ -368,13 +369,17 @@ export default function TeacherLiveSession() {
               )}
 
               {(step.block_type as string) === "video" && (
-                <div className="rounded-2xl overflow-hidden border border-border bg-card aspect-video flex items-center justify-center">
+                <div className="rounded-2xl overflow-hidden border border-border bg-card aspect-video">
                   {config.video_url ? (
-                    <video src={config.video_url as string} controls className="w-full h-full" />
+                    <VideoEmbed url={config.video_url as string} />
+                  ) : config.youtube_url ? (
+                    <VideoEmbed url={config.youtube_url as string} />
                   ) : (
-                    <div className="text-center space-y-3">
-                      <span className="text-6xl">🎬</span>
-                      <p className="text-muted-foreground font-medium">Video content</p>
+                    <div className="w-full h-full flex items-center justify-center text-center space-y-3">
+                      <div>
+                        <span className="text-6xl">🎬</span>
+                        <p className="text-muted-foreground font-medium mt-2">Video content</p>
+                      </div>
                     </div>
                   )}
                 </div>

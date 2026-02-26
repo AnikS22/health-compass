@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Search, Plus, UserCheck, UserX, Shield } from "lucide-react";
+import { Users, Search, Plus, UserCheck, UserX, Shield, ChevronDown, ChevronUp } from "lucide-react";
+import UserClassManager from "@/components/admin/UserClassManager";
 
 interface UserRow {
   id: string;
@@ -265,60 +266,7 @@ export default function ManageUsers() {
             </thead>
             <tbody>
               {filtered.map((u) => (
-                <tr key={u.id} className="border-t border-border">
-                  <td className="px-4 py-3 text-foreground flex items-center gap-2">
-                    <Users className="w-4 h-4 text-primary" />
-                    {u.display_name}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {ALL_ROLES.map((r) => {
-                        const has = u.roles.includes(r.key);
-                        return (
-                          <button
-                            key={r.key}
-                            onClick={() => toggleRole(u.id, r.key, has)}
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
-                              has
-                                ? "bg-primary/10 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                                : "bg-secondary text-muted-foreground border-border hover:bg-primary/10 hover:text-primary hover:border-primary/30"
-                            }`}
-                            title={has ? `Remove ${r.label} role` : `Add ${r.label} role`}
-                          >
-                            {r.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <select
-                      value={u.organization_id ?? ""}
-                      onChange={(e) => assignOrg(u.id, e.target.value)}
-                      className="bg-background border border-input rounded-lg px-2 py-1 text-xs text-foreground"
-                    >
-                      <option value="">Unassigned</option>
-                      {orgs.map((o) => (
-                        <option key={o.id} value={o.id}>{o.name}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
-                      {u.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleActive(u)}
-                      className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                    >
-                      {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
-                      {u.is_active ? "Deactivate" : "Activate"}
-                    </button>
-                  </td>
-                </tr>
+                <UserRowComponent key={u.id} u={u} orgs={orgs} toggleRole={toggleRole} assignOrg={assignOrg} toggleActive={toggleActive} />
               ))}
               {filtered.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No users found</td></tr>
@@ -328,5 +276,85 @@ export default function ManageUsers() {
         </div>
       )}
     </div>
+  );
+}
+function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive }: {
+  u: UserRow;
+  orgs: { id: string; name: string }[];
+  toggleRole: (userId: string, roleKey: string, hasRole: boolean) => void;
+  assignOrg: (userId: string, orgId: string) => void;
+  toggleActive: (u: UserRow) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <>
+      <tr className="border-t border-border">
+        <td className="px-4 py-3 text-foreground">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            {u.display_name}
+            <button onClick={() => setExpanded(!expanded)} className="ml-1 p-0.5 rounded hover:bg-secondary transition-colors">
+              {expanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+            </button>
+          </div>
+        </td>
+        <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
+        <td className="px-4 py-3">
+          <div className="flex flex-wrap gap-1">
+            {ALL_ROLES.map((r) => {
+              const has = u.roles.includes(r.key);
+              return (
+                <button
+                  key={r.key}
+                  onClick={() => toggleRole(u.id, r.key, has)}
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+                    has
+                      ? "bg-primary/10 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                      : "bg-secondary text-muted-foreground border-border hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                  }`}
+                  title={has ? `Remove ${r.label} role` : `Add ${r.label} role`}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <select
+            value={u.organization_id ?? ""}
+            onChange={(e) => assignOrg(u.id, e.target.value)}
+            className="bg-background border border-input rounded-lg px-2 py-1 text-xs text-foreground"
+          >
+            <option value="">Unassigned</option>
+            {orgs.map((o) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        </td>
+        <td className="px-4 py-3">
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
+            {u.is_active ? "Active" : "Inactive"}
+          </span>
+        </td>
+        <td className="px-4 py-3">
+          <button
+            onClick={() => toggleActive(u)}
+            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+            {u.is_active ? "Deactivate" : "Activate"}
+          </button>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="border-t border-border/50 bg-secondary/20">
+          <td colSpan={6} className="px-6 py-4">
+            <UserClassManager userId={u.id} userOrgId={u.organization_id} />
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
