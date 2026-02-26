@@ -52,11 +52,24 @@ export default function SelfPacedCurriculum() {
         .eq("user_id", appUserId)
         .not("completed_at", "is", null);
       if (attempts) {
-        const { data: assignments } = await supabase
-          .from("assignments")
-          .select("id, lesson_version_id")
-          .in("id", attempts.map((a) => a.assignment_id));
-        const completedVersionIds = new Set((assignments ?? []).map((a) => a.lesson_version_id));
+        // Check assignment-based completions
+        const assignmentIds = attempts.map((a) => a.assignment_id).filter((id): id is string => id !== null);
+        let completedVersionIds = new Set<string>();
+        if (assignmentIds.length > 0) {
+          const { data: assignments } = await supabase
+            .from("assignments")
+            .select("id, lesson_version_id")
+            .in("id", assignmentIds);
+          completedVersionIds = new Set((assignments ?? []).map((a) => a.lesson_version_id));
+        }
+        // Also check direct self-paced completions
+        const { data: selfPacedAttempts } = await supabase
+          .from("independent_attempts")
+          .select("lesson_version_id")
+          .eq("user_id", appUserId)
+          .not("completed_at", "is", null)
+          .not("lesson_version_id", "is", null);
+        (selfPacedAttempts ?? []).forEach((a) => { if (a.lesson_version_id) completedVersionIds.add(a.lesson_version_id); });
         setCompletedLessons(completedVersionIds);
       }
     }
@@ -69,7 +82,7 @@ export default function SelfPacedCurriculum() {
   }
 
   function startLesson(versionId: string) {
-    navigate(`/lesson/preview?version=${versionId}`);
+    navigate(`/lesson/preview?versionId=${versionId}&selfpaced=true`);
   }
 
   const unitsFor = (cid: string) => units.filter((u) => u.course_id === cid);

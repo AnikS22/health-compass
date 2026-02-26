@@ -161,12 +161,12 @@ function StudentDashboard({ appUserId, navigate }: { appUserId: string | null; n
             <span className="text-xs font-bold uppercase tracking-widest text-primary">Student Dashboard</span>
           </div>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Welcome to The Ethics Lab</h1>
-          <p className="text-muted-foreground mt-2 max-w-xl">Your classes, assignments, and live sessions — all in one place.</p>
+          <p className="text-muted-foreground mt-2 max-w-xl">Your classes, assignments, and self-paced lessons — all in one place.</p>
         </div>
         <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-primary/10 blur-2xl" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="My Classes" value={loading ? "—" : enrolledClasses.length} subtitle="Enrolled" icon={BookOpen} />
         <StatCard title="Assignments" value={loading ? "—" : assignmentCount} subtitle="Pending" icon={ClipboardList} />
         <div
@@ -179,6 +179,18 @@ function StudentDashboard({ appUserId, navigate }: { appUserId: string | null; n
           <div>
             <p className="text-sm font-bold text-foreground">Join Live Session</p>
             <p className="text-xs text-muted-foreground">Enter a session code</p>
+          </div>
+        </div>
+        <div
+          onClick={() => navigate("/explore")}
+          className="cursor-pointer bg-card rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex items-center gap-4"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <BookOpen className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Explore Curriculum</p>
+            <p className="text-xs text-muted-foreground">Self-paced learning</p>
           </div>
         </div>
       </div>
@@ -194,10 +206,15 @@ function StudentDashboard({ appUserId, navigate }: { appUserId: string | null; n
           <div className="p-8 text-center space-y-3">
             <Users className="w-10 h-10 text-muted-foreground mx-auto" />
             <p className="text-foreground font-semibold">No classes yet</p>
-            <p className="text-sm text-muted-foreground">Ask your teacher for a class join code.</p>
-            <button onClick={() => navigate("/classes")} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90">
-              Join a Class
-            </button>
+            <p className="text-sm text-muted-foreground">Join a class with a code, or explore self-paced lessons.</p>
+            <div className="flex items-center justify-center gap-3">
+              <button onClick={() => navigate("/classes")} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90">
+                Join a Class
+              </button>
+              <button onClick={() => navigate("/explore")} className="px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-bold hover:bg-secondary/80">
+                Explore Curriculum
+              </button>
+            </div>
           </div>
         ) : (
           <div className="divide-y divide-border">
