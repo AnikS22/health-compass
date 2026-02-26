@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Search, Plus, UserCheck, UserX, Shield, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, Search, Plus, UserCheck, UserX, Shield, ChevronDown, ChevronUp, Compass } from "lucide-react";
 import UserClassManager from "@/components/admin/UserClassManager";
 
 interface UserRow {
@@ -80,6 +80,16 @@ export default function ManageUsers() {
 
   async function assignOrg(userId: string, orgId: string) {
     await supabase.from("users").update({ organization_id: orgId || null }).eq("id", userId);
+    loadUsers();
+  }
+
+  async function setSelfPaced(userId: string) {
+    // Remove org and ensure student role
+    await supabase.from("users").update({ organization_id: null }).eq("id", userId);
+    const { data: existing } = await supabase.from("user_roles").select("role_key").eq("user_id", userId).eq("role_key", "student");
+    if (!existing || existing.length === 0) {
+      await supabase.from("user_roles").insert({ user_id: userId, role_key: "student" as any });
+    }
     loadUsers();
   }
 
@@ -266,7 +276,7 @@ export default function ManageUsers() {
             </thead>
             <tbody>
               {filtered.map((u) => (
-                <UserRowComponent key={u.id} u={u} orgs={orgs} toggleRole={toggleRole} assignOrg={assignOrg} toggleActive={toggleActive} />
+                <UserRowComponent key={u.id} u={u} orgs={orgs} toggleRole={toggleRole} assignOrg={assignOrg} toggleActive={toggleActive} setSelfPaced={setSelfPaced} />
               ))}
               {filtered.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No users found</td></tr>
@@ -278,12 +288,13 @@ export default function ManageUsers() {
     </div>
   );
 }
-function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive }: {
+function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSelfPaced }: {
   u: UserRow;
   orgs: { id: string; name: string }[];
   toggleRole: (userId: string, roleKey: string, hasRole: boolean) => void;
   assignOrg: (userId: string, orgId: string) => void;
   toggleActive: (u: UserRow) => void;
+  setSelfPaced: (userId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -322,16 +333,23 @@ function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive }: {
           </div>
         </td>
         <td className="px-4 py-3">
-          <select
-            value={u.organization_id ?? ""}
-            onChange={(e) => assignOrg(u.id, e.target.value)}
-            className="bg-background border border-input rounded-lg px-2 py-1 text-xs text-foreground"
-          >
-            <option value="">Unassigned</option>
-            {orgs.map((o) => (
-              <option key={o.id} value={o.id}>{o.name}</option>
-            ))}
-          </select>
+          <div className="space-y-1.5">
+            <select
+              value={u.organization_id ?? ""}
+              onChange={(e) => assignOrg(u.id, e.target.value)}
+              className="bg-background border border-input rounded-lg px-2 py-1 text-xs text-foreground"
+            >
+              <option value="">Unassigned</option>
+              {orgs.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+            {!u.organization_id && u.roles.includes("student") && (
+              <span className="flex items-center gap-1 text-[11px] font-medium text-primary">
+                <Compass className="w-3 h-3" /> Self-Paced
+              </span>
+            )}
+          </div>
         </td>
         <td className="px-4 py-3">
           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
@@ -339,13 +357,25 @@ function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive }: {
           </span>
         </td>
         <td className="px-4 py-3">
-          <button
-            onClick={() => toggleActive(u)}
-            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-          >
-            {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
-            {u.is_active ? "Deactivate" : "Activate"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => toggleActive(u)}
+              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+              {u.is_active ? "Deactivate" : "Activate"}
+            </button>
+            {(u.organization_id || !u.roles.includes("student")) && (
+              <button
+                onClick={() => setSelfPaced(u.id)}
+                className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary hover:underline"
+                title="Set as independent self-paced student"
+              >
+                <Compass className="w-3.5 h-3.5" />
+                Self-Paced
+              </button>
+            )}
+          </div>
         </td>
       </tr>
       {expanded && (
