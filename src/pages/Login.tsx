@@ -178,23 +178,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="relative flex items-center gap-4 my-2">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-xs text-muted-foreground font-medium">or</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            localStorage.removeItem("ethicslab_selfpaced_welcome");
-            navigate("/explore");
-          }}
-          className="w-full py-3 bg-secondary text-foreground rounded-xl text-sm font-bold hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2 border border-border"
-        >
-          <Play className="w-4 h-4" />
-          Try Demo — Explore as Guest
-        </button>
 
         {status && (
           <p className={`text-center text-sm font-medium ${status.includes("Check your email") ? "text-green-600" : "text-destructive"}`}>
