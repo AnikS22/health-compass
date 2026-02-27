@@ -1,4 +1,5 @@
 import { Scale, Mail, Lock, User, GraduationCap, BookOpen, School, Play } from "lucide-react";
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
