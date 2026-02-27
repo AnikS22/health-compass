@@ -28,9 +28,8 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/explore" element={<SelfPacedCurriculum />} />
         <Route path="/live/student" element={<AuthGuard><StudentLiveView /></AuthGuard>} />
-        <Route path="/lesson/preview" element={<LessonPreview />} />
+        <Route path="/lesson/preview" element={<AuthGuard><LessonPreview /></AuthGuard>} />
         <Route path="/live/host" element={<AuthGuard><TeacherLiveSession /></AuthGuard>} />
         <Route element={<AuthGuard><Layout /></AuthGuard>}>
           <Route path="/" element={<Dashboard />} />
@@ -41,6 +40,7 @@ export default function App() {
           <Route path="/join" element={<JoinSession />} />
           <Route path="/assignments" element={<Assignments />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/explore" element={<SelfPacedCurriculum />} />
           {/* Admin routes */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/schools" element={<ManageSchools />} />
