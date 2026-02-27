@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  BookOpen, ChevronRight, ChevronDown, Play, Clock, Award,
-  Sparkles, ArrowRight, CheckCircle2,
+  BookOpen, ChevronRight, ChevronDown, Play, Clock,
+  CheckCircle2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import OnboardingTour from "@/components/OnboardingTour";
 
 type CourseRow = { id: string; title: string; grade_band: string };
 type UnitRow = { id: string; course_id: string; title: string; sequence_no: number };
@@ -99,56 +100,9 @@ export default function SelfPacedCurriculum() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8">
-      {/* Welcome Tour Modal */}
+      {/* Comprehensive Onboarding Tour */}
       {showWelcome && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-3xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
-            <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-8 text-center">
-              <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-10 h-10 text-primary" />
-              </div>
-              <h2 className="text-2xl font-extrabold text-foreground">Welcome to The Ethics Lab! 🎉</h2>
-              <p className="text-muted-foreground mt-2">Your self-paced learning journey starts here.</p>
-            </div>
-            <div className="p-8 space-y-5">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground text-sm">Browse Courses</p>
-                  <p className="text-xs text-muted-foreground">Explore ethics courses organized by grade level and topic. Each course contains units with interactive lessons.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <Play className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground text-sm">Interactive Lessons</p>
-                  <p className="text-xs text-muted-foreground">Engage with videos, challenges, debates, and thought experiments. Work at your own pace — no deadlines!</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <Award className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground text-sm">Track Progress</p>
-                  <p className="text-xs text-muted-foreground">Complete lessons to earn badges and certificates. Your progress is saved automatically.</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-6 border-t border-border">
-              <button
-                onClick={dismissWelcome}
-                className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-              >
-                Get Started <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <OnboardingTour onComplete={dismissWelcome} />
       )}
 
       {/* Header */}
