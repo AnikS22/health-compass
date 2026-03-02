@@ -1,27 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Clock, Play, RotateCcw, Send } from "lucide-react";
-import type { StepResponse } from "./types";
+import { CheckCircle2, Clock, Play, X } from "lucide-react";
+import ConceptRevealStep from "./ConceptRevealStep";
+import MicroChallengeStep from "./MicroChallengeStep";
+import ReasoningResponseStep from "./ReasoningResponseStep";
+import PeerCompareStep from "./PeerCompareStep";
+import DebateStep from "./DebateStep";
+import type { DebateConfig } from "./DebateStep";
+import CollaborativeBoardStep from "./CollaborativeBoardStep";
+import type { CollaborativeBoardConfig } from "./CollaborativeBoardStep";
+import PeerReviewStep from "./PeerReviewStep";
+import type { PeerReviewConfig } from "./PeerReviewStep";
+import GroupChallengeStep from "./GroupChallengeStep";
+import type { GroupChallengeConfig } from "./GroupChallengeStep";
+import type {
+  StepResponse,
+  ConceptRevealConfig,
+  MicroChallengeConfig,
+  ReasoningResponseConfig,
+  PeerCompareConfig,
+} from "./types";
 
 /* ── Config shape ───────────────────────────────────────────────── */
-
-export interface CheckpointActivity {
-  type: "mcq" | "short_answer" | "fill_blank" | "poll";
-  prompt: string;
-  /** MCQ / poll options */
-  options?: { id: string; text: string }[];
-  /** For MCQ auto-grading */
-  correct_option_id?: string;
-  explanation?: string;
-  hints?: string[];
-  time_limit_seconds?: number;
-  max_attempts?: number;
-  required_to_continue?: boolean;
-}
 
 export interface Checkpoint {
   id: string;
   timestamp_seconds: number;
-  activity: CheckpointActivity;
+  block_type: string;
+  title?: string;
+  body?: string;
+  config: Record<string, unknown>;
 }
 
 export interface VideoCheckpointConfig {
@@ -31,20 +38,132 @@ export interface VideoCheckpointConfig {
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
 
-function extractYouTubeId(url: string): string | null {
-  const m = url.match(
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/
-  );
-  return m ? m[1] : null;
-}
-
 function fmtTime(s: number) {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-/* ── Component ──────────────────────────────────────────────────── */
+/* ── Checkpoint Block Renderer ──────────────────────────────────── */
+
+function CheckpointBlockRenderer({
+  checkpoint,
+  onComplete,
+  isLive,
+}: {
+  checkpoint: Checkpoint;
+  onComplete: (r: StepResponse) => void;
+  isLive?: boolean;
+}) {
+  const { block_type, config, body } = checkpoint;
+
+  if (block_type === "concept_reveal") {
+    return <ConceptRevealStep config={config as unknown as ConceptRevealConfig} body={body ?? null} onComplete={() => onComplete({})} />;
+  }
+  if (block_type === "micro_challenge") {
+    return <MicroChallengeStep config={config as unknown as MicroChallengeConfig} hints={[]} onComplete={onComplete} />;
+  }
+  if (block_type === "reasoning_response" || block_type === "short_answer") {
+    return <ReasoningResponseStep config={config as unknown as ReasoningResponseConfig} onComplete={onComplete} />;
+  }
+  if (block_type === "peer_compare") {
+    return <PeerCompareStep config={config as unknown as PeerCompareConfig} onComplete={onComplete} isLive={isLive} />;
+  }
+  if (block_type === "debate") {
+    return <DebateStep config={config as unknown as DebateConfig} body={body ?? null} onComplete={onComplete} isLive={isLive} />;
+  }
+  if (block_type === "collaborative_board" || block_type === "group_board") {
+    return <CollaborativeBoardStep config={config as unknown as CollaborativeBoardConfig} body={body ?? null} onComplete={onComplete} isLive={isLive} />;
+  }
+  if (block_type === "peer_review") {
+    return <PeerReviewStep config={config as unknown as PeerReviewConfig} body={body ?? null} onComplete={onComplete} isLive={isLive} />;
+  }
+  if (block_type === "group_challenge") {
+    return <GroupChallengeStep config={config as unknown as GroupChallengeConfig} body={body ?? null} onComplete={onComplete} isLive={isLive} />;
+  }
+  // MCQ / poll / simple types — render inline
+  if (block_type === "mcq" || block_type === "multi_select") {
+    return <McqInline config={config} onComplete={onComplete} />;
+  }
+  if (block_type === "poll") {
+    return <PollInline config={config} body={body} onComplete={onComplete} />;
+  }
+  // Fallback: just a continue button
+  return (
+    <div className="space-y-3">
+      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      <p className="text-xs text-muted-foreground italic">Block type: {block_type}</p>
+      <button onClick={() => onComplete({})} className="w-full py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm">
+        Continue
+      </button>
+    </div>
+  );
+}
+
+/* ── Simple inline MCQ ──────────────────────────────────────────── */
+function McqInline({ config, onComplete }: { config: any; onComplete: (r: StepResponse) => void }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const options: string[] = Array.isArray(config.options) ? config.options : [];
+  const correct = config.correct_answer;
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+  };
+
+  if (submitted) {
+    const isCorrect = selected === correct;
+    return (
+      <div className="space-y-3">
+        <div className={`rounded-xl px-4 py-3 text-sm font-medium ${isCorrect ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+          {isCorrect ? "✅ Correct!" : `❌ Incorrect — answer: ${correct}`}
+        </div>
+        <button onClick={() => onComplete({ selected_option_id: selected ?? undefined })} className="w-full py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm">
+          Continue Video
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {options.map((opt, i) => (
+        <button key={i} onClick={() => setSelected(opt)}
+          className={`w-full text-left px-4 py-3 rounded-xl border transition-colors text-sm ${selected === opt ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-foreground hover:border-primary/40"}`}>
+          {opt}
+        </button>
+      ))}
+      <button onClick={handleSubmit} disabled={!selected}
+        className="w-full py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-40">
+        Submit
+      </button>
+    </div>
+  );
+}
+
+/* ── Simple inline Poll ─────────────────────────────────────────── */
+function PollInline({ config, body, onComplete }: { config: any; body?: string; onComplete: (r: StepResponse) => void }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const options: string[] = Array.isArray(config.options) ? config.options : [];
+
+  return (
+    <div className="space-y-2">
+      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      {options.map((opt, i) => (
+        <button key={i} onClick={() => setSelected(opt)}
+          className={`w-full text-left px-4 py-3 rounded-xl border transition-colors text-sm ${selected === opt ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-foreground hover:border-primary/40"}`}>
+          {opt}
+        </button>
+      ))}
+      <button onClick={() => onComplete({ text: selected ?? undefined })} disabled={!selected}
+        className="w-full py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-40">
+        Submit
+      </button>
+    </div>
+  );
+}
+
+/* ── Main Component ─────────────────────────────────────────────── */
 
 interface Props {
   config: VideoCheckpointConfig;
@@ -53,9 +172,8 @@ interface Props {
   isLive?: boolean;
 }
 
-export default function VideoCheckpointStep({ config, body, onComplete }: Props) {
+export default function VideoCheckpointStep({ config, body, onComplete, isLive }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const sortedCheckpoints = [...config.checkpoints].sort(
     (a, b) => a.timestamp_seconds - b.timestamp_seconds
@@ -67,17 +185,6 @@ export default function VideoCheckpointStep({ config, body, onComplete }: Props)
   const [completedCheckpoints, setCompletedCheckpoints] = useState<Set<string>>(new Set());
   const [activeCheckpoint, setActiveCheckpoint] = useState<Checkpoint | null>(null);
   const [responses, setResponses] = useState<Record<string, unknown>>({});
-
-  // Activity overlay state
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [textAnswer, setTextAnswer] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [attempts, setAttempts] = useState(0);
-  const [hintIndex, setHintIndex] = useState(0);
-  const [countdown, setCountdown] = useState<number | null>(null);
-
-  const isYouTube = !!extractYouTubeId(config.video_url);
 
   /* ── Time tracking for HTML5 video ───────────────────────────── */
   useEffect(() => {
@@ -101,110 +208,34 @@ export default function VideoCheckpointStep({ config, body, onComplete }: Props)
 
   /* ── Checkpoint detection ──────────────────────────────────────── */
   useEffect(() => {
-    if (activeCheckpoint) return; // Already showing one
+    if (activeCheckpoint) return;
     for (const cp of sortedCheckpoints) {
       if (completedCheckpoints.has(cp.id)) continue;
       if (currentTime >= cp.timestamp_seconds && currentTime < cp.timestamp_seconds + 1.5) {
-        // Pause & activate
         videoRef.current?.pause();
         setActiveCheckpoint(cp);
-        setSelectedOption(null);
-        setTextAnswer("");
-        setSubmitted(false);
-        setIsCorrect(null);
-        setAttempts(0);
-        setHintIndex(0);
-        if (cp.activity.time_limit_seconds) {
-          setCountdown(cp.activity.time_limit_seconds);
-        } else {
-          setCountdown(null);
-        }
         break;
       }
     }
   }, [currentTime, activeCheckpoint, completedCheckpoints, sortedCheckpoints]);
 
-  /* ── Countdown timer ────────────────────────────────────────────── */
-  useEffect(() => {
-    if (countdown === null || countdown <= 0 || submitted) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      return;
-    }
-    timerRef.current = setInterval(() => {
-      setCountdown((c) => {
-        if (c !== null && c <= 1) {
-          handleSubmitActivity(true);
-          return 0;
-        }
-        return c !== null ? c - 1 : null;
-      });
-    }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countdown, submitted]);
-
-  /* ── Submit activity response ──────────────────────────────────── */
-  const handleSubmitActivity = useCallback(
-    (timedOut = false) => {
-      if (!activeCheckpoint) return;
-      const act = activeCheckpoint.activity;
-      let correct: boolean | null = null;
-
-      if (act.type === "mcq" && act.correct_option_id) {
-        correct = selectedOption === act.correct_option_id;
-        if (!correct && !timedOut && act.max_attempts && attempts + 1 < act.max_attempts) {
-          setAttempts((a) => a + 1);
-          setIsCorrect(false);
-          // Show next hint if available
-          if (act.hints && hintIndex < act.hints.length) {
-            setHintIndex((h) => h + 1);
-          }
-          return;
-        }
-      }
-
-      setSubmitted(true);
-      setIsCorrect(correct);
-
-      const answer = act.type === "mcq" || act.type === "poll" ? selectedOption : textAnswer;
-      setResponses((prev) => ({
-        ...prev,
-        [activeCheckpoint.id]: {
-          answer,
-          correct,
-          attempts: attempts + 1,
-          timed_out: timedOut,
-        },
-      }));
-    },
-    [activeCheckpoint, selectedOption, textAnswer, attempts, hintIndex]
-  );
-
-  /* ── Continue after activity ───────────────────────────────────── */
-  const handleContinue = useCallback(() => {
+  /* ── Handle checkpoint completion ─────────────────────────────── */
+  const handleCheckpointComplete = useCallback((response: StepResponse) => {
     if (!activeCheckpoint) return;
+    setResponses((prev) => ({ ...prev, [activeCheckpoint.id]: response }));
     setCompletedCheckpoints((s) => new Set(s).add(activeCheckpoint.id));
     setActiveCheckpoint(null);
-    setCountdown(null);
-    // Resume video
     setTimeout(() => videoRef.current?.play(), 200);
   }, [activeCheckpoint]);
 
   /* ── Lesson-level completion ───────────────────────────────────── */
   const allDone = sortedCheckpoints.length > 0 && sortedCheckpoints.every((c) => completedCheckpoints.has(c.id));
 
-  useEffect(() => {
-    // Video ended and all checkpoints done
-    if (!isPlaying && allDone && currentTime > 0 && duration > 0 && currentTime >= duration - 1) {
-      // small delay for UX
-    }
-  }, [isPlaying, allDone, currentTime, duration]);
-
   const handleFinish = () => {
     onComplete({ checkpoints: responses } as unknown as StepResponse);
   };
 
-  /* ── Render: progress markers ──────────────────────────────────── */
+  /* ── Render ──────────────────────────────────────────────────── */
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -213,137 +244,51 @@ export default function VideoCheckpointStep({ config, body, onComplete }: Props)
 
       {/* Video container */}
       <div className="relative rounded-2xl overflow-hidden bg-black">
-        {isYouTube ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            <p>YouTube checkpoints require HTML5 video.</p>
-            <p className="text-xs mt-1">Please use a direct video URL (mp4, webm) for checkpoint lessons.</p>
-          </div>
-        ) : (
-          <video
-            ref={videoRef}
-            src={config.video_url}
-            className="w-full aspect-video"
-            controls={!activeCheckpoint}
-            controlsList="nodownload"
-          />
-        )}
+        <video
+          ref={videoRef}
+          src={config.video_url}
+          className="w-full aspect-video"
+          controls={!activeCheckpoint}
+          controlsList="nodownload"
+        />
 
         {/* Checkpoint overlay */}
         {activeCheckpoint && (
-          <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 z-10">
-            <div className="w-full max-w-lg space-y-4">
+          <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 z-10 overflow-y-auto">
+            <div className="w-full max-w-lg space-y-4 py-4">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                  Checkpoint @ {fmtTime(activeCheckpoint.timestamp_seconds)}
+                  📍 Checkpoint @ {fmtTime(activeCheckpoint.timestamp_seconds)}
                 </span>
-                {countdown !== null && countdown > 0 && !submitted && (
-                  <span className="flex items-center gap-1 text-xs font-mono text-destructive">
-                    <Clock className="w-3 h-3" /> {countdown}s
-                  </span>
-                )}
+                <span className="text-[10px] uppercase bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
+                  {activeCheckpoint.block_type.replace(/_/g, " ")}
+                </span>
               </div>
 
-              {/* Prompt */}
-              <p className="text-foreground font-medium">{activeCheckpoint.activity.prompt}</p>
-
-              {/* Hint */}
-              {!submitted && activeCheckpoint.activity.hints && hintIndex > 0 && (
-                <p className="text-xs text-muted-foreground italic bg-muted/50 rounded-lg px-3 py-2">
-                  💡 Hint: {activeCheckpoint.activity.hints[hintIndex - 1]}
-                </p>
+              {activeCheckpoint.title && (
+                <h3 className="text-lg font-bold text-foreground">{activeCheckpoint.title}</h3>
               )}
 
-              {/* Activity body */}
-              {!submitted ? (
-                <>
-                  {(activeCheckpoint.activity.type === "mcq" || activeCheckpoint.activity.type === "poll") &&
-                    activeCheckpoint.activity.options?.map((opt) => (
-                      <button
-                        key={opt.id}
-                        onClick={() => setSelectedOption(opt.id)}
-                        className={`w-full text-left px-4 py-3 rounded-xl border transition-colors text-sm ${
-                          selectedOption === opt.id
-                            ? "border-primary bg-primary/10 text-foreground"
-                            : "border-border bg-card text-foreground hover:border-primary/40"
-                        }`}
-                      >
-                        {opt.text}
-                      </button>
-                    ))}
-
-                  {(activeCheckpoint.activity.type === "short_answer" ||
-                    activeCheckpoint.activity.type === "fill_blank") && (
-                    <textarea
-                      value={textAnswer}
-                      onChange={(e) => setTextAnswer(e.target.value)}
-                      placeholder="Type your answer…"
-                      rows={3}
-                      className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                    />
-                  )}
-
-                  {isCorrect === false && !submitted && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <RotateCcw className="w-3 h-3" /> Not quite — try again
-                      {activeCheckpoint.activity.max_attempts
-                        ? ` (${attempts + 1}/${activeCheckpoint.activity.max_attempts})`
-                        : ""}
-                    </p>
-                  )}
-
-                  <button
-                    onClick={() => handleSubmitActivity()}
-                    disabled={
-                      (activeCheckpoint.activity.type === "mcq" && !selectedOption) ||
-                      (activeCheckpoint.activity.type === "poll" && !selectedOption) ||
-                      (activeCheckpoint.activity.type === "short_answer" && !textAnswer.trim()) ||
-                      (activeCheckpoint.activity.type === "fill_blank" && !textAnswer.trim())
-                    }
-                    className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
-                  >
-                    <Send className="w-4 h-4" /> Submit
-                  </button>
-                </>
-              ) : (
-                /* Feedback */
-                <div className="space-y-3">
-                  {isCorrect !== null && (
-                    <div
-                      className={`rounded-xl px-4 py-3 text-sm font-medium ${
-                        isCorrect
-                          ? "bg-primary/10 text-primary"
-                          : "bg-destructive/10 text-destructive"
-                      }`}
-                    >
-                      {isCorrect ? "✅ Correct!" : "❌ Incorrect"}
-                    </div>
-                  )}
-                  {activeCheckpoint.activity.explanation && (
-                    <p className="text-sm text-muted-foreground">{activeCheckpoint.activity.explanation}</p>
-                  )}
-                  <button
-                    onClick={handleContinue}
-                    className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                  >
-                    <Play className="w-4 h-4" /> Continue Video
-                  </button>
-                </div>
-              )}
+              {/* Render the embedded block */}
+              <CheckpointBlockRenderer
+                checkpoint={activeCheckpoint}
+                onComplete={handleCheckpointComplete}
+                isLive={isLive}
+              />
             </div>
           </div>
         )}
       </div>
 
       {/* Timeline with checkpoint markers */}
-      {!isYouTube && duration > 0 && (
+      {duration > 0 && (
         <div className="space-y-2">
           <div className="relative h-2 rounded-full bg-secondary overflow-visible">
             <div
               className="h-full rounded-full bg-primary transition-all duration-300"
               style={{ width: `${progressPercent}%` }}
             />
-            {/* Checkpoint dots */}
             {sortedCheckpoints.map((cp) => {
               const left = (cp.timestamp_seconds / duration) * 100;
               const done = completedCheckpoints.has(cp.id);
@@ -351,12 +296,10 @@ export default function VideoCheckpointStep({ config, body, onComplete }: Props)
                 <div
                   key={cp.id}
                   className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-colors ${
-                    done
-                      ? "bg-primary border-primary"
-                      : "bg-background border-primary/60"
+                    done ? "bg-primary border-primary" : "bg-background border-primary/60"
                   }`}
                   style={{ left: `${left}%`, marginLeft: "-6px" }}
-                  title={`Checkpoint @ ${fmtTime(cp.timestamp_seconds)}`}
+                  title={`${fmtTime(cp.timestamp_seconds)} — ${(cp.block_type || "").replace(/_/g, " ")}`}
                 />
               );
             })}
@@ -371,7 +314,7 @@ export default function VideoCheckpointStep({ config, body, onComplete }: Props)
         </div>
       )}
 
-      {/* Finish button — shown when video ended and all checkpoints done */}
+      {/* Finish button */}
       {allDone && (
         <button
           onClick={handleFinish}
@@ -381,7 +324,7 @@ export default function VideoCheckpointStep({ config, body, onComplete }: Props)
         </button>
       )}
 
-      {/* If no checkpoints, allow immediate completion */}
+      {/* No checkpoints — allow immediate completion */}
       {sortedCheckpoints.length === 0 && (
         <button
           onClick={() => onComplete({})}
