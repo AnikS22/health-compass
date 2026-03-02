@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BookOpen, ChevronRight, Plus, Trash2, Save, X, Play,
   Layers, FileText, Video, HelpCircle, MessageSquare,
-  ChevronDown, ChevronUp, Edit2, Eye, GripVertical
+  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle
 } from "lucide-react";
 
 type Pkg = { id: string; package_key: string; title: string };
@@ -626,6 +626,20 @@ export default function ManageCurriculum() {
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{ title: string; body: string; config: any }>({ title: "", body: "", config: {} });
   const [saving, setSaving] = useState(false);
+  const [pendingSaves, setPendingSaves] = useState(0);
+  const hasUnsavedWork = editingBlockId !== null || pendingSaves > 0 || saving;
+
+  // Warn before leaving with unsaved work
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedWork) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedWork]);
 
   // Rename unit
   const [renamingUnitId, setRenamingUnitId] = useState<string | null>(null);
@@ -838,14 +852,17 @@ export default function ManageCurriculum() {
     const withNewSeq = reordered.map((b, i) => ({ ...b, sequence_no: i + 1 }));
     setBlocks(withNewSeq);
     // Persist: two-phase to avoid unique constraint on (lesson_version_id, sequence_no)
-    // Phase 1: set all to negative temporaries
-    await Promise.all(
-      withNewSeq.map((b, i) => supabase.from("lesson_blocks").update({ sequence_no: -(i + 1) }).eq("id", b.id))
-    );
-    // Phase 2: set to final positive values
-    await Promise.all(
-      withNewSeq.map(b => supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", b.id))
-    );
+    setPendingSaves(p => p + 1);
+    try {
+      await Promise.all(
+        withNewSeq.map((b, i) => supabase.from("lesson_blocks").update({ sequence_no: -(i + 1) }).eq("id", b.id))
+      );
+      await Promise.all(
+        withNewSeq.map(b => supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", b.id))
+      );
+    } finally {
+      setPendingSaves(p => p - 1);
+    }
   }
 
   // ── Drag & Drop reorder (robust) ──
@@ -905,12 +922,11 @@ export default function ManageCurriculum() {
     setBlocks(withNewSeq);
 
     // Persist to DB: two-phase to avoid unique constraint on (lesson_version_id, sequence_no)
+    setPendingSaves(p => p + 1);
     try {
-      // Phase 1: set all to negative temporaries
       await Promise.all(
         withNewSeq.map((b, i) => supabase.from("lesson_blocks").update({ sequence_no: -(i + 1) }).eq("id", b.id))
       );
-      // Phase 2: set to final positive values
       const results = await Promise.all(
         withNewSeq.map((b) =>
           supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", b.id)
@@ -924,6 +940,8 @@ export default function ManageCurriculum() {
     } catch (err) {
       console.error("Block reorder failed", err);
       if (selectedVersion) loadBlocks(selectedVersion);
+    } finally {
+      setPendingSaves(p => p - 1);
     }
   }
 
@@ -1209,10 +1227,21 @@ export default function ManageCurriculum() {
 
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-foreground text-sm">Activity Blocks ({blocks.length})</h3>
-                <button onClick={() => { setShowCreateBlock(true); setForm({}); }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90">
-                  <Plus className="w-3 h-3" /> Add Block
-                </button>
+                <div className="flex items-center gap-2">
+                  {hasUnsavedWork && (
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-destructive">
+                      {pendingSaves > 0 || saving ? (
+                        <><Loader2 className="w-3 h-3 animate-spin" /> Saving…</>
+                      ) : (
+                        <><AlertTriangle className="w-3 h-3" /> Unsaved edits</>
+                      )}
+                    </span>
+                  )}
+                  <button onClick={() => { setShowCreateBlock(true); setForm({}); }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90">
+                    <Plus className="w-3 h-3" /> Add Block
+                  </button>
+                </div>
               </div>
 
               {showCreateBlock && (
