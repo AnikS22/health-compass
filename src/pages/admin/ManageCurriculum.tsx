@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   BookOpen, ChevronRight, Plus, Trash2, Save, X, Play,
   Layers, FileText, Video, HelpCircle, MessageSquare,
-  ChevronDown, ChevronUp, Edit2, Eye
+  ChevronDown, ChevronUp, Edit2, Eye, GripVertical
 } from "lucide-react";
 
 type Pkg = { id: string; package_key: string; title: string };
@@ -773,6 +773,32 @@ export default function ManageCurriculum() {
     if (selectedVersion) loadBlocks(selectedVersion);
   }
 
+  // ── Drag & Drop reorder ──
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  async function handleDrop(targetIdx: number) {
+    if (dragIdx === null || dragIdx === targetIdx) {
+      setDragIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    // Reorder locally first for instant feedback
+    const reordered = [...blocks];
+    const [moved] = reordered.splice(dragIdx, 1);
+    reordered.splice(targetIdx, 0, moved);
+    setBlocks(reordered);
+    setDragIdx(null);
+    setDragOverIdx(null);
+
+    // Persist all new sequence numbers
+    const updates = reordered.map((b, i) =>
+      supabase.from("lesson_blocks").update({ sequence_no: i + 1 }).eq("id", b.id)
+    );
+    await Promise.all(updates);
+    if (selectedVersion) loadBlocks(selectedVersion);
+  }
+
   // ── Preview lesson in StepRunner ──
   function previewLesson() {
     if (!selectedVersion) return;
@@ -1046,7 +1072,14 @@ export default function ManageCurriculum() {
               )}
 
               {blocks.map((block, idx) => (
-                <div key={block.id} className="bg-card border border-border rounded-xl p-4">
+                <div key={block.id}
+                  draggable
+                  onDragStart={() => setDragIdx(idx)}
+                  onDragOver={(e) => { e.preventDefault(); setDragOverIdx(idx); }}
+                  onDragLeave={() => setDragOverIdx(null)}
+                  onDrop={() => handleDrop(idx)}
+                  onDragEnd={() => { setDragIdx(null); setDragOverIdx(null); }}
+                  className={`bg-card border rounded-xl p-4 transition-all ${dragOverIdx === idx && dragIdx !== idx ? "border-primary border-2 shadow-lg" : "border-border"} ${dragIdx === idx ? "opacity-50" : ""}`}>
                   {editingBlockId === block.id ? (
                     /* ── Edit Mode ── */
                     <div className="space-y-3">
@@ -1074,6 +1107,10 @@ export default function ManageCurriculum() {
                     <>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
+                          <span className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors" title="Drag to reorder">
+                            <GripVertical className="w-4 h-4" />
+                          </span>
+                          <span className="text-xs font-bold text-muted-foreground w-5 text-center">{idx + 1}</span>
                           <span className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary">
                             {blockIcon(block.block_type)}
                           </span>
