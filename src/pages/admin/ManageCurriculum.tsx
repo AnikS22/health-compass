@@ -398,6 +398,7 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
   }
   if (blockType === "video_checkpoint") {
     const checkpoints = Array.isArray(config.checkpoints) ? config.checkpoints : [];
+    const CHECKPOINT_BLOCK_TYPES = BLOCK_TYPES.filter(t => t !== "video_checkpoint");
     return (
       <div className="space-y-3">
         <label className="text-xs font-semibold text-foreground">Video URL (direct mp4/webm — not YouTube)</label>
@@ -405,121 +406,89 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
           placeholder="https://cdn.example.com/lesson.mp4"
           className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
 
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-foreground">Checkpoints ({checkpoints.length})</label>
+        <div className="flex items-center justify-between mt-4">
+          <label className="text-xs font-semibold text-foreground">📍 Checkpoints ({checkpoints.length})</label>
           <button type="button" onClick={() => {
             const newCp = {
               id: `cp-${Date.now()}`,
               timestamp_seconds: 0,
-              activity: { type: "mcq", prompt: "", options: [{ id: "a", text: "Option A" }, { id: "b", text: "Option B" }], correct_option_id: "a", explanation: "", hints: [], max_attempts: 2, required_to_continue: true }
+              block_type: "mcq",
+              title: "",
+              body: "",
+              config: { options: ["Option A", "Option B"], correct_answer: "Option A" },
             };
             onChange({ ...config, checkpoints: [...checkpoints, newCp] });
           }} className="text-xs text-primary hover:underline font-medium">+ Add Checkpoint</button>
         </div>
 
-        {checkpoints.map((cp: any, cpIdx: number) => (
-          <div key={cp.id || cpIdx} className="border border-border rounded-lg p-3 space-y-2 bg-card">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-foreground">Checkpoint {cpIdx + 1}</span>
-              <button type="button" onClick={() => {
-                const updated = checkpoints.filter((_: any, i: number) => i !== cpIdx);
-                onChange({ ...config, checkpoints: updated });
-              }} className="text-xs text-destructive hover:underline">Remove</button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground">Timestamp (seconds)</label>
-                <input type="number" value={cp.timestamp_seconds || 0} onChange={e => {
-                  const updated = [...checkpoints];
-                  updated[cpIdx] = { ...cp, timestamp_seconds: parseInt(e.target.value) || 0 };
+        {checkpoints.map((cp: any, cpIdx: number) => {
+          const updateCp = (patch: any) => {
+            const updated = [...checkpoints];
+            updated[cpIdx] = { ...cp, ...patch };
+            onChange({ ...config, checkpoints: updated });
+          };
+          return (
+            <div key={cp.id || cpIdx} className="border-2 border-primary/20 rounded-xl p-4 space-y-3 bg-card">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">{cpIdx + 1}</span>
+                  <span className="text-sm font-bold text-foreground">Checkpoint</span>
+                </div>
+                <button type="button" onClick={() => {
+                  const updated = checkpoints.filter((_: any, i: number) => i !== cpIdx);
                   onChange({ ...config, checkpoints: updated });
-                }} className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                }} className="text-xs text-destructive hover:underline">Remove</button>
+              </div>
+
+              {/* Timestamp */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium">Timestamp (seconds)</label>
+                  <input type="number" value={cp.timestamp_seconds || 0} onChange={e => updateCp({ timestamp_seconds: parseInt(e.target.value) || 0 })}
+                    className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    = {String(Math.floor((cp.timestamp_seconds || 0) / 60)).padStart(2, "0")}:{String(Math.floor((cp.timestamp_seconds || 0) % 60)).padStart(2, "0")}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium">Block Type</label>
+                  <select value={cp.block_type || "mcq"} onChange={e => updateCp({ block_type: e.target.value, config: {} })}
+                    className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground">
+                    {CHECKPOINT_BLOCK_TYPES.map(t => (
+                      <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Title & Body */}
+              <div>
+                <label className="text-xs text-muted-foreground font-medium">Checkpoint Title (optional)</label>
+                <input value={cp.title || ""} onChange={e => updateCp({ title: e.target.value })}
+                  placeholder="e.g. Quick Check"
+                  className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Activity Type</label>
-                <select value={cp.activity?.type || "mcq"} onChange={e => {
-                  const updated = [...checkpoints];
-                  updated[cpIdx] = { ...cp, activity: { ...cp.activity, type: e.target.value } };
-                  onChange({ ...config, checkpoints: updated });
-                }} className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground">
-                  <option value="mcq">Multiple Choice</option>
-                  <option value="short_answer">Short Answer</option>
-                  <option value="fill_blank">Fill in Blank</option>
-                  <option value="poll">Poll</option>
-                </select>
+                <label className="text-xs text-muted-foreground font-medium">Body Text (optional)</label>
+                <textarea value={cp.body || ""} rows={2} onChange={e => updateCp({ body: e.target.value })}
+                  placeholder="Instructions or context for this checkpoint..."
+                  className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+              </div>
+
+              {/* Embedded block config editor */}
+              <div className="border border-border rounded-lg p-3 bg-background/50">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2">
+                  {(cp.block_type || "mcq").replace(/_/g, " ")} configuration
+                </p>
+                <BlockConfigEditor
+                  blockType={cp.block_type || "mcq"}
+                  config={cp.config || {}}
+                  onChange={(newConfig: any) => updateCp({ config: newConfig })}
+                />
               </div>
             </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground">Prompt</label>
-              <textarea value={cp.activity?.prompt || ""} rows={2} onChange={e => {
-                const updated = [...checkpoints];
-                updated[cpIdx] = { ...cp, activity: { ...cp.activity, prompt: e.target.value } };
-                onChange({ ...config, checkpoints: updated });
-              }} className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
-            </div>
-
-            {(cp.activity?.type === "mcq" || cp.activity?.type === "poll") && (
-              <div>
-                <label className="text-xs text-muted-foreground">Options (JSON: [{`{id, text}`}])</label>
-                <textarea value={JSON.stringify(cp.activity?.options || [], null, 2)} rows={3} onChange={e => {
-                  try {
-                    const updated = [...checkpoints];
-                    updated[cpIdx] = { ...cp, activity: { ...cp.activity, options: JSON.parse(e.target.value) } };
-                    onChange({ ...config, checkpoints: updated });
-                  } catch {}
-                }} className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-xs text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/50" />
-                {cp.activity?.type === "mcq" && (
-                  <input value={cp.activity?.correct_option_id || ""} onChange={e => {
-                    const updated = [...checkpoints];
-                    updated[cpIdx] = { ...cp, activity: { ...cp.activity, correct_option_id: e.target.value } };
-                    onChange({ ...config, checkpoints: updated });
-                  }} placeholder="Correct option ID"
-                  className="w-full mt-1 px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-                )}
-              </div>
-            )}
-
-            <div>
-              <label className="text-xs text-muted-foreground">Explanation (shown after submit)</label>
-              <input value={cp.activity?.explanation || ""} onChange={e => {
-                const updated = [...checkpoints];
-                updated[cpIdx] = { ...cp, activity: { ...cp.activity, explanation: e.target.value } };
-                onChange({ ...config, checkpoints: updated });
-              }} className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground">Time Limit (s)</label>
-                <input type="number" value={cp.activity?.time_limit_seconds || ""} onChange={e => {
-                  const updated = [...checkpoints];
-                  updated[cpIdx] = { ...cp, activity: { ...cp.activity, time_limit_seconds: e.target.value ? parseInt(e.target.value) : undefined } };
-                  onChange({ ...config, checkpoints: updated });
-                }} placeholder="∞" className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Max Attempts</label>
-                <input type="number" value={cp.activity?.max_attempts || ""} onChange={e => {
-                  const updated = [...checkpoints];
-                  updated[cpIdx] = { ...cp, activity: { ...cp.activity, max_attempts: e.target.value ? parseInt(e.target.value) : undefined } };
-                  onChange({ ...config, checkpoints: updated });
-                }} placeholder="∞" className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-              </div>
-              <div className="flex items-end">
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground pb-1.5">
-                  <input type="checkbox" checked={!!cp.activity?.required_to_continue} onChange={e => {
-                    const updated = [...checkpoints];
-                    updated[cpIdx] = { ...cp, activity: { ...cp.activity, required_to_continue: e.target.checked } };
-                    onChange({ ...config, checkpoints: updated });
-                  }} />
-                  Required
-                </label>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -597,8 +566,8 @@ function BlockPreview({ block }: { block: Block }) {
         {cps.map((cp: any, i: number) => (
           <div key={cp.id || i} className="px-3 py-1.5 rounded-lg text-xs bg-secondary text-muted-foreground flex items-center gap-2">
             <span className="font-mono font-bold text-foreground">{fmtTime(cp.timestamp_seconds)}</span>
-            <span className="uppercase text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">{cp.activity?.type}</span>
-            <span className="truncate">{cp.activity?.prompt}</span>
+            <span className="uppercase text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">{(cp.block_type || cp.activity?.type || "?").replace(/_/g, " ")}</span>
+            <span className="truncate">{cp.title || cp.body || cp.activity?.prompt || ""}</span>
           </div>
         ))}
       </div>
