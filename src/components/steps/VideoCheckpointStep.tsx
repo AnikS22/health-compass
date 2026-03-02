@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import ConceptRevealStep from "./ConceptRevealStep";
 import MicroChallengeStep from "./MicroChallengeStep";
@@ -209,8 +209,10 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const checkpoints = config.checkpoints ?? [];
-  const sortedCheckpoints = [...checkpoints].sort(
-    (a, b) => a.timestamp_seconds - b.timestamp_seconds
+  const sortedCheckpoints = useMemo(
+    () => [...checkpoints].sort((a, b) => a.timestamp_seconds - b.timestamp_seconds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(checkpoints)]
   );
 
   const videoUrl = config.video_url || "";
@@ -223,7 +225,12 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [completedCheckpoints, setCompletedCheckpoints] = useState<Set<string>>(new Set());
+  const completedRef = useRef(completedCheckpoints);
+  completedRef.current = completedCheckpoints;
   const [activeCheckpoint, setActiveCheckpoint] = useState<Checkpoint | null>(null);
+  const activeRef = useRef(activeCheckpoint);
+  activeRef.current = activeCheckpoint;
+  const cooldownRef = useRef(false);
   const [responses, setResponses] = useState<Record<string, unknown>>({});
   const [ytReady, setYtReady] = useState(false);
 
@@ -304,10 +311,10 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
 
   /* ── Checkpoint detection ──────────────────────────────────────── */
   useEffect(() => {
-    if (activeCheckpoint || !hasCheckpoints) return;
+    if (activeRef.current || cooldownRef.current || !hasCheckpoints) return;
     for (const cp of sortedCheckpoints) {
-      if (completedCheckpoints.has(cp.id)) continue;
-      if (currentTime >= cp.timestamp_seconds && currentTime < cp.timestamp_seconds + 1.5) {
+      if (completedRef.current.has(cp.id)) continue;
+      if (currentTime >= cp.timestamp_seconds && currentTime < cp.timestamp_seconds + 2) {
         // Pause the video
         if (isYouTube) {
           ytPlayerRef.current?.pauseVideo?.();
@@ -318,21 +325,25 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
         break;
       }
     }
-  }, [currentTime, activeCheckpoint, completedCheckpoints, sortedCheckpoints, hasCheckpoints, isYouTube]);
+  }, [currentTime, hasCheckpoints, sortedCheckpoints, isYouTube]);
 
   /* ── Handle checkpoint completion ─────────────────────────────── */
   const handleCheckpointComplete = useCallback((response: StepResponse) => {
     if (!activeCheckpoint) return;
-    setResponses((prev) => ({ ...prev, [activeCheckpoint.id]: response }));
-    setCompletedCheckpoints((s) => new Set(s).add(activeCheckpoint.id));
+    const cpId = activeCheckpoint.id;
+    setResponses((prev) => ({ ...prev, [cpId]: response }));
+    setCompletedCheckpoints((s) => { const n = new Set(s); n.add(cpId); return n; });
     setActiveCheckpoint(null);
+    // Cooldown prevents immediate re-trigger while time is still in the window
+    cooldownRef.current = true;
     setTimeout(() => {
+      cooldownRef.current = false;
       if (isYouTube) {
         ytPlayerRef.current?.playVideo?.();
       } else {
         videoRef.current?.play();
       }
-    }, 200);
+    }, 600);
   }, [activeCheckpoint, isYouTube]);
 
   const allDone = hasCheckpoints && sortedCheckpoints.every((c) => completedCheckpoints.has(c.id));
