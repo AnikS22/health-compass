@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -840,17 +840,50 @@ export default function ManageCurriculum() {
     if (selectedVersion) loadBlocks(selectedVersion);
   }
 
-  // ── Drag & Drop reorder ──
+  // ── Drag & Drop reorder (robust) ──
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const dragCounters = useRef<Map<number, number>>(new Map());
 
-  async function handleDrop(targetIdx: number) {
+  function handleBlockDragStart(e: React.DragEvent, idx: number) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("block-drag", String(idx));
+    setDragIdx(idx);
+    // Use timeout so the dragged element renders with opacity before snapshot
+    requestAnimationFrame(() => {});
+  }
+
+  function handleBlockDragEnter(e: React.DragEvent, idx: number) {
+    e.preventDefault();
+    const count = (dragCounters.current.get(idx) || 0) + 1;
+    dragCounters.current.set(idx, count);
+    if (dragIdx !== null && idx !== dragIdx) {
+      setDragOverIdx(idx);
+    }
+  }
+
+  function handleBlockDragLeave(e: React.DragEvent, idx: number) {
+    const count = (dragCounters.current.get(idx) || 1) - 1;
+    dragCounters.current.set(idx, count);
+    if (count <= 0) {
+      dragCounters.current.set(idx, 0);
+      if (dragOverIdx === idx) setDragOverIdx(null);
+    }
+  }
+
+  function handleBlockDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  async function handleDrop(e: React.DragEvent, targetIdx: number) {
+    e.preventDefault();
+    dragCounters.current.clear();
     if (dragIdx === null || dragIdx === targetIdx) {
       setDragIdx(null);
       setDragOverIdx(null);
       return;
     }
-    // Reorder locally first for instant feedback
     const reordered = [...blocks];
     const [moved] = reordered.splice(dragIdx, 1);
     reordered.splice(targetIdx, 0, moved);
@@ -858,12 +891,17 @@ export default function ManageCurriculum() {
     setDragIdx(null);
     setDragOverIdx(null);
 
-    // Persist all new sequence numbers
     const updates = reordered.map((b, i) =>
       supabase.from("lesson_blocks").update({ sequence_no: i + 1 }).eq("id", b.id)
     );
     await Promise.all(updates);
     if (selectedVersion) loadBlocks(selectedVersion);
+  }
+
+  function handleBlockDragEnd() {
+    dragCounters.current.clear();
+    setDragIdx(null);
+    setDragOverIdx(null);
   }
 
   // ── Preview lesson in StepRunner ──
@@ -1172,11 +1210,12 @@ export default function ManageCurriculum() {
               {blocks.map((block, idx) => (
                 <div key={block.id}
                   draggable
-                  onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(idx)); setDragIdx(idx); }}
-                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverIdx(idx); }}
-                  onDragLeave={() => setDragOverIdx(null)}
-                  onDrop={(e) => { e.preventDefault(); handleDrop(idx); }}
-                  onDragEnd={() => { setDragIdx(null); setDragOverIdx(null); }}
+                  onDragStart={(e) => handleBlockDragStart(e, idx)}
+                  onDragEnter={(e) => handleBlockDragEnter(e, idx)}
+                  onDragLeave={(e) => handleBlockDragLeave(e, idx)}
+                  onDragOver={handleBlockDragOver}
+                  onDrop={(e) => handleDrop(e, idx)}
+                  onDragEnd={handleBlockDragEnd}
                   className={`bg-card border rounded-xl p-4 transition-all ${dragOverIdx === idx && dragIdx !== idx ? "border-primary border-2 shadow-lg" : "border-border"} ${dragIdx === idx ? "opacity-50" : ""}`}>
                   {editingBlockId === block.id ? (
                     /* ── Edit Mode ── */
