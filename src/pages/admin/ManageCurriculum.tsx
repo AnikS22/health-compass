@@ -627,6 +627,13 @@ export default function ManageCurriculum() {
   const [editForm, setEditForm] = useState<{ title: string; body: string; config: any }>({ title: "", body: "", config: {} });
   const [saving, setSaving] = useState(false);
 
+  // Rename unit
+  const [renamingUnitId, setRenamingUnitId] = useState<string | null>(null);
+  const [renameUnitTitle, setRenameUnitTitle] = useState("");
+
+  // Confirm delete
+  const [confirmDelete, setConfirmDelete] = useState<{ type: string; id: string; name: string } | null>(null);
+
   // Create dialogs
   const [showCreatePkg, setShowCreatePkg] = useState(false);
   const [showCreateCourse, setShowCreateCourse] = useState(false);
@@ -740,6 +747,43 @@ export default function ManageCurriculum() {
     if (!selectedVersion) return;
     await supabase.from("lesson_blocks").delete().eq("id", blockId);
     loadBlocks(selectedVersion);
+  }
+
+  async function deleteUnit(unitId: string) {
+    // Delete all lessons in this unit first
+    const unitLessons = lessons.filter(l => l.unit_id === unitId);
+    for (const l of unitLessons) {
+      const { data: versions } = await supabase.from("lesson_versions").select("id").eq("lesson_id", l.id);
+      if (versions) {
+        for (const v of versions) {
+          await supabase.from("lesson_blocks").delete().eq("lesson_version_id", v.id);
+        }
+        await supabase.from("lesson_versions").delete().eq("lesson_id", l.id);
+      }
+      await supabase.from("lessons").delete().eq("id", l.id);
+    }
+    await supabase.from("units").delete().eq("id", unitId);
+    setSelectedLesson(null); setSelectedVersion(null); setBlocks([]);
+    setExpandedUnit(null);
+    await loadAll();
+    if (selectedCourse) loadCourseLessons(selectedCourse);
+  }
+
+  async function renameUnit(unitId: string) {
+    if (!renameUnitTitle.trim()) return;
+    await supabase.from("units").update({ title: renameUnitTitle.trim() }).eq("id", unitId);
+    setRenamingUnitId(null);
+    setRenameUnitTitle("");
+    await loadAll();
+    if (selectedCourse) loadCourseLessons(selectedCourse);
+  }
+
+  async function handleConfirmDelete() {
+    if (!confirmDelete) return;
+    if (confirmDelete.type === "block") await deleteBlock(confirmDelete.id);
+    else if (confirmDelete.type === "lesson") await deleteLesson(confirmDelete.id);
+    else if (confirmDelete.type === "unit") await deleteUnit(confirmDelete.id);
+    setConfirmDelete(null);
   }
 
   async function deleteLesson(lessonId: string) {
@@ -987,20 +1031,45 @@ export default function ManageCurriculum() {
 
               {courseUnits.map(unit => (
                 <div key={unit.id} className="bg-card border border-border rounded-xl overflow-hidden">
-                  <button onClick={() => setExpandedUnit(expandedUnit === unit.id ? null : unit.id)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors">
-                    <span className="flex items-center gap-2 font-bold text-sm text-foreground">
-                      <Layers className="w-4 h-4 text-primary" />
-                      {unit.title}
-                    </span>
-                    {expandedUnit === unit.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                  </button>
+                  <div className="flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors">
+                    {renamingUnitId === unit.id ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <input value={renameUnitTitle} onChange={e => setRenameUnitTitle(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter") renameUnit(unit.id); if (e.key === "Escape") setRenamingUnitId(null); }}
+                          autoFocus
+                          className="flex-1 px-2 py-1 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                        <button onClick={() => renameUnit(unit.id)} className="px-2 py-1 bg-primary text-primary-foreground rounded-lg text-xs font-bold">Save</button>
+                        <button onClick={() => setRenamingUnitId(null)} className="px-2 py-1 bg-secondary text-foreground rounded-lg text-xs font-bold">Cancel</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setExpandedUnit(expandedUnit === unit.id ? null : unit.id)} className="flex items-center gap-2 flex-1 text-left">
+                        <span className="flex items-center gap-2 font-bold text-sm text-foreground">
+                          <Layers className="w-4 h-4 text-primary" />
+                          {unit.title}
+                        </span>
+                      </button>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => { setRenamingUnitId(unit.id); setRenameUnitTitle(unit.title); }}
+                        className="p-1 rounded text-muted-foreground hover:text-primary transition-colors" title="Rename unit">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => setConfirmDelete({ type: "unit", id: unit.id, name: unit.title })}
+                        className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors" title="Delete unit">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => setExpandedUnit(expandedUnit === unit.id ? null : unit.id)}>
+                        {expandedUnit === unit.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      </button>
+                    </div>
+                  </div>
                   {expandedUnit === unit.id && (
                     <div className="border-t border-border">
                       {lessons.filter(l => l.unit_id === unit.id).map(l => (
-                        <button key={l.id} onClick={() => { setSelectedLesson(l); if (l.versions.length > 0) loadBlocks(l.versions[0].id); }}
-                          className={`w-full text-left px-4 py-2.5 flex items-center justify-between border-b border-border last:border-b-0 transition-colors ${selectedLesson?.id === l.id ? "bg-primary/5" : "hover:bg-secondary/30"}`}>
-                          <div>
+                        <div key={l.id}
+                          className={`flex items-center justify-between px-4 py-2.5 border-b border-border last:border-b-0 transition-colors ${selectedLesson?.id === l.id ? "bg-primary/5" : "hover:bg-secondary/30"}`}>
+                          <button onClick={() => { setSelectedLesson(l); if (l.versions.length > 0) loadBlocks(l.versions[0].id); }}
+                            className="flex-1 text-left">
                             <span className="text-sm font-medium text-foreground">{l.title}</span>
                             <div className="flex gap-2 mt-0.5">
                               {l.versions.map(v => (
@@ -1009,9 +1078,15 @@ export default function ManageCurriculum() {
                                 </span>
                               ))}
                             </div>
+                          </button>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setConfirmDelete({ type: "lesson", id: l.id, name: l.title })}
+                              className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors" title="Delete lesson">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                           </div>
-                          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                        </button>
+                        </div>
                       ))}
                       {lessons.filter(l => l.unit_id === unit.id).length === 0 && (
                         <p className="px-4 py-3 text-xs text-muted-foreground">No lessons yet</p>
@@ -1056,7 +1131,7 @@ export default function ManageCurriculum() {
                         {v.publish_status === "published" ? "Unpublish" : "Publish"}
                       </button>
                     ))}
-                    <button onClick={() => deleteLesson(selectedLesson.id)}
+                    <button onClick={() => setConfirmDelete({ type: "lesson", id: selectedLesson.id, name: selectedLesson.title })}
                       className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1159,7 +1234,7 @@ export default function ManageCurriculum() {
                             className="p-1 rounded text-muted-foreground hover:text-primary transition-colors" title="Edit">
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => deleteBlock(block.id)}
+                          <button onClick={() => setConfirmDelete({ type: "block", id: block.id, name: block.title || block.block_type.replace(/_/g, " ") })}
                             className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors" title="Delete">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1182,6 +1257,31 @@ export default function ManageCurriculum() {
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl">
+            <h3 className="text-lg font-bold text-foreground">Confirm Delete</h3>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete <span className="font-semibold text-foreground">{confirmDelete.name}</span>?
+              {confirmDelete.type === "unit" && " This will also delete all lessons and blocks in this unit."}
+              {confirmDelete.type === "lesson" && " This will also delete all versions and blocks."}
+              {" "}This cannot be undone.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-bold hover:bg-secondary/80 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-destructive text-destructive-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
