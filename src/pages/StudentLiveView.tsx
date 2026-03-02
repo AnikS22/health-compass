@@ -14,8 +14,15 @@ import type {
   ReasoningResponseConfig, PeerCompareConfig,
 } from "../components/steps/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import VideoCheckpointStep from "../components/steps/VideoCheckpointStep";
+import type { VideoCheckpointConfig } from "../components/steps/VideoCheckpointStep";
 
-function isInteractiveBlock(type: string) {
+function videoHasCheckpoints(config: Record<string, unknown>): boolean {
+  return Array.isArray(config.checkpoints) && config.checkpoints.length > 0;
+}
+
+function isInteractiveBlock(type: string, config?: Record<string, unknown>) {
+  if (type === "video" && config && videoHasCheckpoints(config)) return true;
   return [
     "micro_challenge", "reasoning_response", "peer_compare",
     "poll", "mcq", "multi_select", "short_answer", "debate",
@@ -249,7 +256,7 @@ export default function StudentLiveView() {
 
   // ---------- ACTIVE SESSION ----------
   const step = steps[activeIndex];
-  const isInteractive = step ? isInteractiveBlock(step.block_type) : false;
+  const isInteractive = step ? isInteractiveBlock(step.block_type, step.config) : false;
   const progress = steps.length > 0 ? ((activeIndex + 1) / steps.length) * 100 : 0;
 
   // ---------- LOOK UP SCREEN ----------
@@ -346,6 +353,14 @@ export default function StudentLiveView() {
             </div>
           ) : (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: "200ms" }}>
+              {step?.block_type === "video" && videoHasCheckpoints(step.config) && (
+                <VideoCheckpointStep
+                  config={step.config as unknown as VideoCheckpointConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                  isLive
+                />
+              )}
               {step?.block_type === "concept_reveal" && (
                 <ConceptRevealStep
                   config={step.config as unknown as ConceptRevealConfig}

@@ -11,6 +11,8 @@ import type { StepBlock, Hint } from "../components/steps/types";
 import type { Json } from "@/integrations/supabase/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import VideoEmbed from "@/components/VideoEmbed";
+import VideoCheckpointStep from "@/components/steps/VideoCheckpointStep";
+import type { VideoCheckpointConfig } from "@/components/steps/VideoCheckpointStep";
 
 type Participant = { id: string; display_name: string; joined_at: string };
 
@@ -31,6 +33,10 @@ function getBlockIcon(type: string) {
 
 function isInteractiveBlock(type: string) {
   return ["micro_challenge", "reasoning_response", "peer_compare", "poll", "mcq", "multi_select", "short_answer", "debate", "exit_ticket", "scenario", "dilemma_tree"].includes(type);
+}
+
+function videoHasCheckpoints(config: Record<string, unknown>): boolean {
+  return Array.isArray(config.checkpoints) && config.checkpoints.length > 0;
 }
 
 export default function TeacherLiveSession() {
@@ -368,7 +374,14 @@ export default function TeacherLiveSession() {
                 <p className="text-xl text-muted-foreground leading-relaxed">{step.body}</p>
               )}
 
-              {(step.block_type as string) === "video" && (
+              {(step.block_type as string) === "video" && videoHasCheckpoints(config) && (
+                <VideoCheckpointStep
+                  config={config as unknown as VideoCheckpointConfig}
+                  body={step.body}
+                  onComplete={() => {}}
+                />
+              )}
+              {(step.block_type as string) === "video" && !videoHasCheckpoints(config) && (
                 <div className="rounded-2xl overflow-hidden border border-border bg-card aspect-video">
                   {config.video_url ? (
                     <VideoEmbed url={config.video_url as string} />

@@ -45,6 +45,39 @@ function fmtTime(s: number) {
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
+/* ── YouTube IFrame API loader ──────────────────────────────────── */
+
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: (() => void) | undefined;
+  }
+}
+
+let ytApiLoading = false;
+let ytApiReady = !!window.YT?.Player;
+const ytApiCallbacks: (() => void)[] = [];
+
+function loadYouTubeAPI(): Promise<void> {
+  if (ytApiReady) return Promise.resolve();
+  return new Promise((resolve) => {
+    ytApiCallbacks.push(resolve);
+    if (ytApiLoading) return;
+    ytApiLoading = true;
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      ytApiReady = true;
+      ytApiLoading = false;
+      prev?.();
+      ytApiCallbacks.forEach((cb) => cb());
+      ytApiCallbacks.length = 0;
+    };
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  });
+}
+
 /* ── Checkpoint Block Renderer ──────────────────────────────────── */
 
 function CheckpointBlockRenderer({
@@ -82,14 +115,12 @@ function CheckpointBlockRenderer({
   if (block_type === "group_challenge") {
     return <GroupChallengeStep config={config as unknown as GroupChallengeConfig} body={body ?? null} onComplete={onComplete} isLive={isLive} />;
   }
-  // MCQ / poll / simple types — render inline
   if (block_type === "mcq" || block_type === "multi_select") {
     return <McqInline config={config} onComplete={onComplete} />;
   }
   if (block_type === "poll") {
     return <PollInline config={config} body={body} onComplete={onComplete} />;
   }
-  // Fallback: just a continue button
   return (
     <div className="space-y-3">
       {body && <p className="text-sm text-muted-foreground">{body}</p>}
@@ -108,9 +139,7 @@ function McqInline({ config, onComplete }: { config: any; onComplete: (r: StepRe
   const options: string[] = Array.isArray(config.options) ? config.options : [];
   const correct = config.correct_answer;
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-  };
+  const handleSubmit = () => { setSubmitted(true); };
 
   if (submitted) {
     const isCorrect = selected === correct;
@@ -175,6 +204,9 @@ interface Props {
 
 export default function VideoCheckpointStep({ config, body, onComplete, isLive }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const ytContainerRef = useRef<HTMLDivElement>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const checkpoints = config.checkpoints ?? [];
   const sortedCheckpoints = [...checkpoints].sort(
@@ -193,6 +225,62 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
   const [completedCheckpoints, setCompletedCheckpoints] = useState<Set<string>>(new Set());
   const [activeCheckpoint, setActiveCheckpoint] = useState<Checkpoint | null>(null);
   const [responses, setResponses] = useState<Record<string, unknown>>({});
+  const [ytReady, setYtReady] = useState(false);
+
+  /* ── YouTube Player setup ───────────────────────────────────── */
+  useEffect(() => {
+    if (!isYouTube || !ytId || !hasCheckpoints) return;
+
+    let destroyed = false;
+    loadYouTubeAPI().then(() => {
+      if (destroyed || !ytContainerRef.current) return;
+      const player = new window.YT.Player(ytContainerRef.current, {
+        videoId: ytId,
+        playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+        events: {
+          onReady: () => {
+            if (destroyed) return;
+            ytPlayerRef.current = player;
+            setDuration(player.getDuration() || 0);
+            setYtReady(true);
+          },
+          onStateChange: (e: any) => {
+            if (destroyed) return;
+            setIsPlaying(e.data === window.YT.PlayerState.PLAYING);
+            if (e.data === window.YT.PlayerState.PLAYING) {
+              setDuration(player.getDuration() || 0);
+            }
+          },
+        },
+      });
+    });
+
+    return () => {
+      destroyed = true;
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      ytPlayerRef.current?.destroy?.();
+      ytPlayerRef.current = null;
+    };
+  }, [isYouTube, ytId, hasCheckpoints]);
+
+  /* ── YouTube polling for currentTime ────────────────────────── */
+  useEffect(() => {
+    if (!isYouTube || !ytReady || !hasCheckpoints) return;
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
+    pollIntervalRef.current = setInterval(() => {
+      const player = ytPlayerRef.current;
+      if (!player?.getCurrentTime) return;
+      const t = player.getCurrentTime();
+      setCurrentTime(t);
+      const dur = player.getDuration();
+      if (dur && dur > 0) setDuration(dur);
+    }, 400);
+
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, [isYouTube, ytReady, hasCheckpoints]);
 
   /* ── Time tracking for HTML5 video ───────────────────────────── */
   useEffect(() => {
@@ -220,12 +308,17 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
     for (const cp of sortedCheckpoints) {
       if (completedCheckpoints.has(cp.id)) continue;
       if (currentTime >= cp.timestamp_seconds && currentTime < cp.timestamp_seconds + 1.5) {
-        videoRef.current?.pause();
+        // Pause the video
+        if (isYouTube) {
+          ytPlayerRef.current?.pauseVideo?.();
+        } else {
+          videoRef.current?.pause();
+        }
         setActiveCheckpoint(cp);
         break;
       }
     }
-  }, [currentTime, activeCheckpoint, completedCheckpoints, sortedCheckpoints, hasCheckpoints]);
+  }, [currentTime, activeCheckpoint, completedCheckpoints, sortedCheckpoints, hasCheckpoints, isYouTube]);
 
   /* ── Handle checkpoint completion ─────────────────────────────── */
   const handleCheckpointComplete = useCallback((response: StepResponse) => {
@@ -233,8 +326,14 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
     setResponses((prev) => ({ ...prev, [activeCheckpoint.id]: response }));
     setCompletedCheckpoints((s) => new Set(s).add(activeCheckpoint.id));
     setActiveCheckpoint(null);
-    setTimeout(() => videoRef.current?.play(), 200);
-  }, [activeCheckpoint]);
+    setTimeout(() => {
+      if (isYouTube) {
+        ytPlayerRef.current?.playVideo?.();
+      } else {
+        videoRef.current?.play();
+      }
+    }, 200);
+  }, [activeCheckpoint, isYouTube]);
 
   const allDone = hasCheckpoints && sortedCheckpoints.every((c) => completedCheckpoints.has(c.id));
 
@@ -243,6 +342,55 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
   };
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  /* ── Checkpoint overlay (shared for both YouTube & HTML5) ───── */
+  const checkpointOverlay = activeCheckpoint && (
+    <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 z-10 overflow-y-auto">
+      <div className="w-full max-w-lg space-y-4 py-4">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+            📍 Checkpoint @ {fmtTime(activeCheckpoint.timestamp_seconds)}
+          </span>
+          <span className="text-[10px] uppercase bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
+            {activeCheckpoint.block_type.replace(/_/g, " ")}
+          </span>
+        </div>
+        {activeCheckpoint.title && (
+          <h3 className="text-lg font-bold text-foreground">{activeCheckpoint.title}</h3>
+        )}
+        <CheckpointBlockRenderer
+          checkpoint={activeCheckpoint}
+          onComplete={handleCheckpointComplete}
+          isLive={isLive}
+        />
+      </div>
+    </div>
+  );
+
+  /* ── Timeline (shared) ─────────────────────────────────────── */
+  const timeline = hasCheckpoints && duration > 0 && (
+    <div className="space-y-2">
+      <div className="relative h-2 rounded-full bg-secondary overflow-visible">
+        <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progressPercent}%` }} />
+        {sortedCheckpoints.map((cp) => {
+          const left = (cp.timestamp_seconds / duration) * 100;
+          const done = completedCheckpoints.has(cp.id);
+          return (
+            <div key={cp.id}
+              className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-colors ${done ? "bg-primary border-primary" : "bg-background border-primary/60"}`}
+              style={{ left: `${left}%`, marginLeft: "-6px" }}
+              title={`${fmtTime(cp.timestamp_seconds)} — ${(cp.block_type || "").replace(/_/g, " ")}`}
+            />
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{fmtTime(currentTime)}</span>
+        <span>{completedCheckpoints.size}/{sortedCheckpoints.length} checkpoints</span>
+        <span>{fmtTime(duration)}</span>
+      </div>
+    </div>
+  );
 
   /* ── YouTube-only (no checkpoints) — simple embed ────────────── */
   if (isYouTube && !hasCheckpoints) {
@@ -266,27 +414,24 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
     );
   }
 
-  /* ── YouTube with checkpoints — not supported ────────────────── */
+  /* ── YouTube WITH checkpoints — YT.Player API ───────────────── */
   if (isYouTube && hasCheckpoints) {
     return (
       <div className="space-y-4">
         {body && <p className="text-muted-foreground text-sm mb-3">{body}</p>}
-        <div className="rounded-2xl overflow-hidden bg-black">
-          <iframe
-            className="w-full aspect-video"
-            src={`https://www.youtube.com/embed/${ytId}?rel=0`}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title="Video"
-          />
+        <div className="relative rounded-2xl overflow-hidden bg-black">
+          <div ref={ytContainerRef} className="w-full aspect-video" />
+          {checkpointOverlay}
         </div>
-        <p className="text-xs text-muted-foreground italic text-center">
-          ⚠️ Checkpoints require a direct video URL (mp4/webm) — YouTube checkpoints are not supported.
-        </p>
-        <button onClick={() => onComplete({})}
-          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity">
-          Continue
-        </button>
+
+        {timeline}
+
+        {allDone && (
+          <button onClick={handleFinish}
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4" /> Complete This Step
+          </button>
+        )}
       </div>
     );
   }
@@ -304,58 +449,11 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
           controls={!activeCheckpoint}
           controlsList="nodownload"
         />
-
-        {/* Checkpoint overlay */}
-        {activeCheckpoint && (
-          <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 z-10 overflow-y-auto">
-            <div className="w-full max-w-lg space-y-4 py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                  📍 Checkpoint @ {fmtTime(activeCheckpoint.timestamp_seconds)}
-                </span>
-                <span className="text-[10px] uppercase bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
-                  {activeCheckpoint.block_type.replace(/_/g, " ")}
-                </span>
-              </div>
-              {activeCheckpoint.title && (
-                <h3 className="text-lg font-bold text-foreground">{activeCheckpoint.title}</h3>
-              )}
-              <CheckpointBlockRenderer
-                checkpoint={activeCheckpoint}
-                onComplete={handleCheckpointComplete}
-                isLive={isLive}
-              />
-            </div>
-          </div>
-        )}
+        {checkpointOverlay}
       </div>
 
-      {/* Timeline with checkpoint markers */}
-      {hasCheckpoints && duration > 0 && (
-        <div className="space-y-2">
-          <div className="relative h-2 rounded-full bg-secondary overflow-visible">
-            <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progressPercent}%` }} />
-            {sortedCheckpoints.map((cp) => {
-              const left = (cp.timestamp_seconds / duration) * 100;
-              const done = completedCheckpoints.has(cp.id);
-              return (
-                <div key={cp.id}
-                  className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-colors ${done ? "bg-primary border-primary" : "bg-background border-primary/60"}`}
-                  style={{ left: `${left}%`, marginLeft: "-6px" }}
-                  title={`${fmtTime(cp.timestamp_seconds)} — ${(cp.block_type || "").replace(/_/g, " ")}`}
-                />
-              );
-            })}
-          </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{fmtTime(currentTime)}</span>
-            <span>{completedCheckpoints.size}/{sortedCheckpoints.length} checkpoints</span>
-            <span>{fmtTime(duration)}</span>
-          </div>
-        </div>
-      )}
+      {timeline}
 
-      {/* Finish / Continue */}
       {allDone && (
         <button onClick={handleFinish}
           className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
