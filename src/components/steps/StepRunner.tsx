@@ -164,7 +164,7 @@ export default function StepRunner({
             isLive={isLive}
           />
         )}
-        {step.block_type === "video_checkpoint" && (
+        {(step.block_type === "video_checkpoint" || step.block_type === "video") && (
           <VideoCheckpointStep
             config={step.config as unknown as VideoCheckpointConfig}
             body={step.body}

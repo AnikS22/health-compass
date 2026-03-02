@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Clock, Play, X } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import ConceptRevealStep from "./ConceptRevealStep";
 import MicroChallengeStep from "./MicroChallengeStep";
 import ReasoningResponseStep from "./ReasoningResponseStep";
@@ -32,8 +32,9 @@ export interface Checkpoint {
 }
 
 export interface VideoCheckpointConfig {
-  video_url: string;
-  checkpoints: Checkpoint[];
+  video_url?: string;
+  youtube_url?: string;
+  checkpoints?: Checkpoint[];
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
@@ -175,9 +176,16 @@ interface Props {
 export default function VideoCheckpointStep({ config, body, onComplete, isLive }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const sortedCheckpoints = [...config.checkpoints].sort(
+  const checkpoints = config.checkpoints ?? [];
+  const sortedCheckpoints = [...checkpoints].sort(
     (a, b) => a.timestamp_seconds - b.timestamp_seconds
   );
+
+  const videoUrl = config.video_url || "";
+  const youtubeUrl = config.youtube_url || "";
+  const ytId = youtubeUrl ? youtubeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/)?.[1] : null;
+  const isYouTube = !!ytId;
+  const hasCheckpoints = sortedCheckpoints.length > 0;
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -208,7 +216,7 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
 
   /* ── Checkpoint detection ──────────────────────────────────────── */
   useEffect(() => {
-    if (activeCheckpoint) return;
+    if (activeCheckpoint || !hasCheckpoints) return;
     for (const cp of sortedCheckpoints) {
       if (completedCheckpoints.has(cp.id)) continue;
       if (currentTime >= cp.timestamp_seconds && currentTime < cp.timestamp_seconds + 1.5) {
@@ -217,7 +225,7 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
         break;
       }
     }
-  }, [currentTime, activeCheckpoint, completedCheckpoints, sortedCheckpoints]);
+  }, [currentTime, activeCheckpoint, completedCheckpoints, sortedCheckpoints, hasCheckpoints]);
 
   /* ── Handle checkpoint completion ─────────────────────────────── */
   const handleCheckpointComplete = useCallback((response: StepResponse) => {
@@ -228,25 +236,70 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
     setTimeout(() => videoRef.current?.play(), 200);
   }, [activeCheckpoint]);
 
-  /* ── Lesson-level completion ───────────────────────────────────── */
-  const allDone = sortedCheckpoints.length > 0 && sortedCheckpoints.every((c) => completedCheckpoints.has(c.id));
+  const allDone = hasCheckpoints && sortedCheckpoints.every((c) => completedCheckpoints.has(c.id));
 
   const handleFinish = () => {
-    onComplete({ checkpoints: responses } as unknown as StepResponse);
+    onComplete(hasCheckpoints ? { checkpoints: responses } as unknown as StepResponse : {});
   };
 
-  /* ── Render ──────────────────────────────────────────────────── */
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  /* ── YouTube-only (no checkpoints) — simple embed ────────────── */
+  if (isYouTube && !hasCheckpoints) {
+    return (
+      <div className="space-y-4">
+        {body && <p className="text-muted-foreground text-sm mb-3">{body}</p>}
+        <div className="rounded-2xl overflow-hidden bg-black">
+          <iframe
+            className="w-full aspect-video"
+            src={`https://www.youtube.com/embed/${ytId}?rel=0`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="Video"
+          />
+        </div>
+        <button onClick={() => onComplete({})}
+          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity">
+          Continue
+        </button>
+      </div>
+    );
+  }
+
+  /* ── YouTube with checkpoints — not supported ────────────────── */
+  if (isYouTube && hasCheckpoints) {
+    return (
+      <div className="space-y-4">
+        {body && <p className="text-muted-foreground text-sm mb-3">{body}</p>}
+        <div className="rounded-2xl overflow-hidden bg-black">
+          <iframe
+            className="w-full aspect-video"
+            src={`https://www.youtube.com/embed/${ytId}?rel=0`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="Video"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground italic text-center">
+          ⚠️ Checkpoints require a direct video URL (mp4/webm) — YouTube checkpoints are not supported.
+        </p>
+        <button onClick={() => onComplete({})}
+          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity">
+          Continue
+        </button>
+      </div>
+    );
+  }
+
+  /* ── Direct video (with or without checkpoints) ──────────────── */
   return (
     <div className="space-y-4">
       {body && <p className="text-muted-foreground text-sm mb-3">{body}</p>}
 
-      {/* Video container */}
       <div className="relative rounded-2xl overflow-hidden bg-black">
         <video
           ref={videoRef}
-          src={config.video_url}
+          src={videoUrl}
           className="w-full aspect-video"
           controls={!activeCheckpoint}
           controlsList="nodownload"
@@ -256,7 +309,6 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
         {activeCheckpoint && (
           <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 z-10 overflow-y-auto">
             <div className="w-full max-w-lg space-y-4 py-4">
-              {/* Header */}
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-primary uppercase tracking-wider">
                   📍 Checkpoint @ {fmtTime(activeCheckpoint.timestamp_seconds)}
@@ -265,12 +317,9 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
                   {activeCheckpoint.block_type.replace(/_/g, " ")}
                 </span>
               </div>
-
               {activeCheckpoint.title && (
                 <h3 className="text-lg font-bold text-foreground">{activeCheckpoint.title}</h3>
               )}
-
-              {/* Render the embedded block */}
               <CheckpointBlockRenderer
                 checkpoint={activeCheckpoint}
                 onComplete={handleCheckpointComplete}
@@ -282,22 +331,16 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
       </div>
 
       {/* Timeline with checkpoint markers */}
-      {duration > 0 && (
+      {hasCheckpoints && duration > 0 && (
         <div className="space-y-2">
           <div className="relative h-2 rounded-full bg-secondary overflow-visible">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            />
+            <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progressPercent}%` }} />
             {sortedCheckpoints.map((cp) => {
               const left = (cp.timestamp_seconds / duration) * 100;
               const done = completedCheckpoints.has(cp.id);
               return (
-                <div
-                  key={cp.id}
-                  className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-colors ${
-                    done ? "bg-primary border-primary" : "bg-background border-primary/60"
-                  }`}
+                <div key={cp.id}
+                  className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-colors ${done ? "bg-primary border-primary" : "bg-background border-primary/60"}`}
                   style={{ left: `${left}%`, marginLeft: "-6px" }}
                   title={`${fmtTime(cp.timestamp_seconds)} — ${(cp.block_type || "").replace(/_/g, " ")}`}
                 />
@@ -306,30 +349,22 @@ export default function VideoCheckpointStep({ config, body, onComplete, isLive }
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{fmtTime(currentTime)}</span>
-            <span>
-              {completedCheckpoints.size}/{sortedCheckpoints.length} checkpoints
-            </span>
+            <span>{completedCheckpoints.size}/{sortedCheckpoints.length} checkpoints</span>
             <span>{fmtTime(duration)}</span>
           </div>
         </div>
       )}
 
-      {/* Finish button */}
+      {/* Finish / Continue */}
       {allDone && (
-        <button
-          onClick={handleFinish}
-          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-        >
+        <button onClick={handleFinish}
+          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
           <CheckCircle2 className="w-4 h-4" /> Complete This Step
         </button>
       )}
-
-      {/* No checkpoints — allow immediate completion */}
-      {sortedCheckpoints.length === 0 && (
-        <button
-          onClick={() => onComplete({})}
-          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity"
-        >
+      {!hasCheckpoints && (
+        <button onClick={() => onComplete({})}
+          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity">
           Continue
         </button>
       )}
