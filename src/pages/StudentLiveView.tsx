@@ -30,6 +30,49 @@ function isInteractiveBlock(type: string, config?: Record<string, unknown>) {
   ].includes(type);
 }
 
+function PollMultiSelectStep({ options, isMulti, body, onComplete }: {
+  options: string[]; isMulti: boolean; body: string | null;
+  onComplete: (r: StepResponse) => void;
+}) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const toggle = (opt: string) => {
+    if (isMulti) {
+      setSelected(prev => prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]);
+    } else {
+      setSelected([opt]);
+    }
+  };
+  return (
+    <div className="space-y-4">
+      {body && <p className="text-lg text-foreground">{body}</p>}
+      <div className="space-y-2">
+        {options.map((opt, i) => (
+          <button key={i} type="button" onClick={() => toggle(opt)}
+            className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all text-sm font-medium ${
+              selected.includes(opt)
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border bg-card text-foreground hover:border-primary/30"
+            }`}>
+            <span className="flex items-center gap-3">
+              <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+                selected.includes(opt) ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+              }`}>{String.fromCharCode(65 + i)}</span>
+              {opt}
+            </span>
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={() => onComplete({ selected_options: selected, answer: isMulti ? selected : selected[0] })}
+        disabled={selected.length === 0}
+        className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+      >
+        Submit {isMulti ? `(${selected.length} selected)` : ""}
+      </button>
+    </div>
+  );
+}
+
 export default function StudentLiveView() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -388,7 +431,16 @@ export default function StudentLiveView() {
                   isLive
                 />
               )}
-              {step && !["concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare"].includes(step.block_type) && (
+              {(step?.block_type === "poll" || step?.block_type === "multi_select") && (
+                <PollMultiSelectStep
+                  key={step.id}
+                  options={Array.isArray((step.config as any).options) ? (step.config as any).options : []}
+                  isMulti={step.block_type === "multi_select"}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                />
+              )}
+              {step && !["concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "video"].includes(step.block_type) && (
                 <div className="space-y-4">
                   {step.body && <p className="text-lg text-foreground">{step.body}</p>}
                   <textarea
