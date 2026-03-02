@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Users, BookOpen, Radio, ClipboardList, Plus, Play, Copy, Check, Key, Clock, Calendar,
+  ArrowLeft, Users, BookOpen, Radio, ClipboardList, Plus, Play, Copy, Check, Key, Clock, Calendar, ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -300,11 +300,17 @@ export default function ClassDetail() {
               </thead>
               <tbody>
                 {roster.map((r) => (
-                  <tr key={r.user_id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  <tr key={r.user_id}
+                    onClick={() => navigate(`/classes/${classId}/student/${r.user_id}`)}
+                    className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
+                  >
                     <td className="p-4 font-semibold text-foreground">{r.display_name || "—"}</td>
                     <td className="p-4 text-muted-foreground">{r.email || "—"}</td>
                     <td className="p-4">
                       <span className="text-xs bg-success/10 text-success px-3 py-1 rounded-full font-bold">Active</span>
+                    </td>
+                    <td className="p-4">
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     </td>
                   </tr>
                 ))}

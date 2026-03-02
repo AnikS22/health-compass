@@ -15,6 +15,7 @@ import TeacherLiveSession from "./pages/TeacherLiveSession";
 import JoinSession from "./pages/JoinSession";
 import StudentLiveView from "./pages/StudentLiveView";
 import ClassDetail from "./pages/ClassDetail";
+import StudentDetail from "./pages/StudentDetail";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageSchools from "./pages/admin/ManageSchools";
 import ManageTeachers from "./pages/admin/ManageTeachers";
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/classes" element={<Classes />} />
           <Route path="/classes/:classId" element={<ClassDetail />} />
+          <Route path="/classes/:classId/student/:studentId" element={<StudentDetail />} />
           <Route path="/curriculum" element={<Curriculum />} />
           <Route path="/live" element={<LiveSessions />} />
           <Route path="/join" element={<JoinSession />} />
