@@ -832,12 +832,15 @@ export default function ManageCurriculum() {
     if (idx < 0) return;
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= blocks.length) return;
-    const a = blocks[idx], b = blocks[swapIdx];
-    await Promise.all([
-      supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", a.id),
-      supabase.from("lesson_blocks").update({ sequence_no: a.sequence_no }).eq("id", b.id),
-    ]);
-    if (selectedVersion) loadBlocks(selectedVersion);
+    // Swap locally first
+    const reordered = [...blocks];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    const withNewSeq = reordered.map((b, i) => ({ ...b, sequence_no: i + 1 }));
+    setBlocks(withNewSeq);
+    // Persist
+    await Promise.all(
+      withNewSeq.map(b => supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", b.id))
+    );
   }
 
   // ── Drag & Drop reorder (robust) ──
@@ -878,24 +881,36 @@ export default function ManageCurriculum() {
 
   async function handleDrop(e: React.DragEvent, targetIdx: number) {
     e.preventDefault();
+    e.stopPropagation();
     dragCounters.current.clear();
-    if (dragIdx === null || dragIdx === targetIdx) {
-      setDragIdx(null);
-      setDragOverIdx(null);
-      return;
-    }
-    const reordered = [...blocks];
-    const [moved] = reordered.splice(dragIdx, 1);
-    reordered.splice(targetIdx, 0, moved);
-    setBlocks(reordered);
+    const fromIdx = dragIdx;
     setDragIdx(null);
     setDragOverIdx(null);
+    if (fromIdx === null || fromIdx === targetIdx) return;
 
-    const updates = reordered.map((b, i) =>
-      supabase.from("lesson_blocks").update({ sequence_no: i + 1 }).eq("id", b.id)
-    );
-    await Promise.all(updates);
-    if (selectedVersion) loadBlocks(selectedVersion);
+    const reordered = [...blocks];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(targetIdx, 0, moved);
+    // Update sequence_no locally so UI reflects correct order immediately
+    const withNewSeq = reordered.map((b, i) => ({ ...b, sequence_no: i + 1 }));
+    setBlocks(withNewSeq);
+
+    // Persist to DB
+    try {
+      const updates = withNewSeq.map((b) =>
+        supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", b.id)
+      );
+      const results = await Promise.all(updates);
+      const hasError = results.some(r => r.error);
+      if (hasError) {
+        console.error("Failed to persist block order", results.filter(r => r.error).map(r => r.error));
+        // Reload from DB to get correct state
+        if (selectedVersion) loadBlocks(selectedVersion);
+      }
+    } catch (err) {
+      console.error("Block reorder failed", err);
+      if (selectedVersion) loadBlocks(selectedVersion);
+    }
   }
 
   function handleBlockDragEnd() {
