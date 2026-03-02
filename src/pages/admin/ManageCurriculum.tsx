@@ -102,8 +102,31 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
               updated[cpIdx] = { ...cp, ...patch };
               onChange({ ...config, checkpoints: updated });
             };
+            const handleCpDragStart = (e: React.DragEvent) => {
+              e.stopPropagation();
+              e.dataTransfer.setData("checkpoint-idx", String(cpIdx));
+            };
+            const handleCpDragOver = (e: React.DragEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+            };
+            const handleCpDrop = (e: React.DragEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const fromIdx = parseInt(e.dataTransfer.getData("checkpoint-idx"));
+              if (isNaN(fromIdx) || fromIdx === cpIdx) return;
+              const reordered = [...checkpoints];
+              const [moved] = reordered.splice(fromIdx, 1);
+              reordered.splice(cpIdx, 0, moved);
+              onChange({ ...config, checkpoints: reordered });
+            };
             return (
-              <div key={cp.id || cpIdx} className="border-2 border-primary/20 rounded-xl p-4 space-y-3 bg-card mt-2">
+              <div key={cp.id || cpIdx}
+                draggable
+                onDragStart={handleCpDragStart}
+                onDragOver={handleCpDragOver}
+                onDrop={handleCpDrop}
+                className="border-2 border-primary/20 rounded-xl p-4 space-y-3 bg-card mt-2 cursor-grab active:cursor-grabbing">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">{cpIdx + 1}</span>
