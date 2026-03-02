@@ -1097,10 +1097,10 @@ export default function ManageCurriculum() {
               {blocks.map((block, idx) => (
                 <div key={block.id}
                   draggable
-                  onDragStart={() => setDragIdx(idx)}
-                  onDragOver={(e) => { e.preventDefault(); setDragOverIdx(idx); }}
+                  onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(idx)); setDragIdx(idx); }}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverIdx(idx); }}
                   onDragLeave={() => setDragOverIdx(null)}
-                  onDrop={() => handleDrop(idx)}
+                  onDrop={(e) => { e.preventDefault(); handleDrop(idx); }}
                   onDragEnd={() => { setDragIdx(null); setDragOverIdx(null); }}
                   className={`bg-card border rounded-xl p-4 transition-all ${dragOverIdx === idx && dragIdx !== idx ? "border-primary border-2 shadow-lg" : "border-border"} ${dragIdx === idx ? "opacity-50" : ""}`}>
                   {editingBlockId === block.id ? (
