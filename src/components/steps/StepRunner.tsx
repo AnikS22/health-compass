@@ -11,6 +11,8 @@ import PeerReviewStep from "./PeerReviewStep";
 import type { PeerReviewConfig } from "./PeerReviewStep";
 import GroupChallengeStep from "./GroupChallengeStep";
 import type { GroupChallengeConfig } from "./GroupChallengeStep";
+import VideoCheckpointStep from "./VideoCheckpointStep";
+import type { VideoCheckpointConfig } from "./VideoCheckpointStep";
 import type {
   StepBlock,
   StepResponse,
@@ -157,6 +159,14 @@ export default function StepRunner({
         {step.block_type === "group_challenge" as string && (
           <GroupChallengeStep
             config={step.config as unknown as GroupChallengeConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        )}
+        {step.block_type === "video_checkpoint" && (
+          <VideoCheckpointStep
+            config={step.config as unknown as VideoCheckpointConfig}
             body={step.body}
             onComplete={(r) => handleComplete(r)}
             isLive={isLive}

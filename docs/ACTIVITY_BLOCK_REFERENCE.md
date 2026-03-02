@@ -329,3 +329,87 @@ Team-based collaborative challenge.
 | 19 | `peer_compare` | Collaborative | ✅ | ✅ |
 | 20 | `peer_review` | Collaborative | ✅ | ✅ |
 | 21 | `group_challenge` | Collaborative | ✅ | ❌ |
+| 22 | `video_checkpoint` | Interactive Video | ✅ | ✅ |
+
+---
+
+## 22. Video Checkpoint (`video_checkpoint`)
+
+Interactive video with time-coded activity checkpoints. The video auto-pauses at defined timestamps and presents an inline activity (MCQ, short answer, fill-in-blank, or poll). Students must respond before the video resumes.
+
+### Config (`config` JSON)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `video_url` | string | ✅ | Direct video URL (mp4, webm). YouTube not supported for checkpoints. |
+| `checkpoints` | array | ✅ | Ordered list of checkpoint objects |
+
+### Checkpoint Object
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | Unique checkpoint identifier |
+| `timestamp_seconds` | number | ✅ | Video timestamp to pause at (in seconds) |
+| `activity` | object | ✅ | The activity to present (see below) |
+
+### Activity Object
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | enum | ✅ | `mcq`, `short_answer`, `fill_blank`, or `poll` |
+| `prompt` | string | ✅ | Question or instruction text |
+| `options` | array | For mcq/poll | `[{ id, text }]` choices |
+| `correct_option_id` | string | For mcq | Auto-grading: ID of the correct option |
+| `explanation` | string | Optional | Shown after submission |
+| `hints` | string[] | Optional | Progressive hints on wrong attempts |
+| `time_limit_seconds` | number | Optional | Countdown timer; auto-submits when expired |
+| `max_attempts` | number | Optional | Max wrong attempts before forcing continue |
+| `required_to_continue` | boolean | Optional | If true, must complete to resume video |
+
+### Example Config
+
+```json
+{
+  "video_url": "https://cdn.example.com/lesson-video.mp4",
+  "checkpoints": [
+    {
+      "id": "cp1",
+      "timestamp_seconds": 120,
+      "activity": {
+        "type": "mcq",
+        "prompt": "What ethical principle was just described?",
+        "options": [
+          { "id": "a", "text": "Autonomy" },
+          { "id": "b", "text": "Beneficence" },
+          { "id": "c", "text": "Justice" }
+        ],
+        "correct_option_id": "b",
+        "explanation": "Beneficence means acting in the best interest of others.",
+        "hints": ["Think about doing good for others."],
+        "max_attempts": 2,
+        "required_to_continue": true
+      }
+    },
+    {
+      "id": "cp2",
+      "timestamp_seconds": 240,
+      "activity": {
+        "type": "short_answer",
+        "prompt": "In your own words, explain the concept of informed consent.",
+        "time_limit_seconds": 120,
+        "required_to_continue": true
+      }
+    }
+  ]
+}
+```
+
+### Data Captured
+
+| Field | Description |
+|-------|-------------|
+| Per-checkpoint answer | Selected option or text response |
+| Correctness | For MCQ: whether the answer matched `correct_option_id` |
+| Attempts | Number of tries before correct/moving on |
+| Timed out | Whether the countdown expired |
+| Rewatch points | Timestamps where student replayed segments |
