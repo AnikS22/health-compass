@@ -845,22 +845,23 @@ export default function ManageCurriculum() {
 
   // ── Drag & Drop reorder (robust) ──
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const dragIdxRef = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const dragCounters = useRef<Map<number, number>>(new Map());
 
   function handleBlockDragStart(e: React.DragEvent, idx: number) {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("block-drag", String(idx));
+    dragIdxRef.current = idx;
     setDragIdx(idx);
-    // Use timeout so the dragged element renders with opacity before snapshot
-    requestAnimationFrame(() => {});
   }
 
   function handleBlockDragEnter(e: React.DragEvent, idx: number) {
     e.preventDefault();
     const count = (dragCounters.current.get(idx) || 0) + 1;
     dragCounters.current.set(idx, count);
-    if (dragIdx !== null && idx !== dragIdx) {
+    const src = dragIdxRef.current;
+    if (src !== null && idx !== src) {
       setDragOverIdx(idx);
     }
   }
@@ -883,10 +884,13 @@ export default function ManageCurriculum() {
     e.preventDefault();
     e.stopPropagation();
     dragCounters.current.clear();
-    const fromIdx = dragIdx;
+    // Read source index from dataTransfer (always correct) with ref fallback
+    const dtData = e.dataTransfer.getData("block-drag");
+    const fromIdx = dtData !== "" ? parseInt(dtData, 10) : dragIdxRef.current;
+    dragIdxRef.current = null;
     setDragIdx(null);
     setDragOverIdx(null);
-    if (fromIdx === null || fromIdx === targetIdx) return;
+    if (fromIdx === null || isNaN(fromIdx) || fromIdx === targetIdx) return;
 
     const reordered = [...blocks];
     const [moved] = reordered.splice(fromIdx, 1);
@@ -915,6 +919,7 @@ export default function ManageCurriculum() {
 
   function handleBlockDragEnd() {
     dragCounters.current.clear();
+    dragIdxRef.current = null;
     setDragIdx(null);
     setDragOverIdx(null);
   }
@@ -1224,13 +1229,11 @@ export default function ManageCurriculum() {
 
               {blocks.map((block, idx) => (
                 <div key={block.id}
-                  draggable
-                  onDragStart={(e) => handleBlockDragStart(e, idx)}
-                  onDragEnter={(e) => handleBlockDragEnter(e, idx)}
-                  onDragLeave={(e) => handleBlockDragLeave(e, idx)}
-                  onDragOver={handleBlockDragOver}
-                  onDrop={(e) => handleDrop(e, idx)}
-                  onDragEnd={handleBlockDragEnd}
+                   onDragEnter={(e) => handleBlockDragEnter(e, idx)}
+                   onDragLeave={(e) => handleBlockDragLeave(e, idx)}
+                   onDragOver={handleBlockDragOver}
+                   onDrop={(e) => handleDrop(e, idx)}
+                   onDragEnd={handleBlockDragEnd}
                   className={`bg-card border rounded-xl p-4 transition-all ${dragOverIdx === idx && dragIdx !== idx ? "border-primary border-2 shadow-lg" : "border-border"} ${dragIdx === idx ? "opacity-50" : ""}`}>
                   {editingBlockId === block.id ? (
                     /* ── Edit Mode ── */
@@ -1259,7 +1262,10 @@ export default function ManageCurriculum() {
                     <>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors" title="Drag to reorder">
+                          <span
+                            draggable
+                            onDragStart={(e) => handleBlockDragStart(e, idx)}
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors" title="Drag to reorder">
                             <GripVertical className="w-4 h-4" />
                           </span>
                           <span className="text-xs font-bold text-muted-foreground w-5 text-center">{idx + 1}</span>
