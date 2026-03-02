@@ -1,4 +1,4 @@
-export type StepType = "concept_reveal" | "micro_challenge" | "reasoning_response" | "peer_compare" | "debate" | "collaborative_board" | "group_board" | "peer_review" | "group_challenge";
+export type StepType = "concept_reveal" | "micro_challenge" | "reasoning_response" | "peer_compare" | "debate" | "collaborative_board" | "group_board" | "peer_review" | "group_challenge" | "video_checkpoint";
 
 export interface Hint {
   level: number;
