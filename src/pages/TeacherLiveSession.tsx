@@ -31,8 +31,9 @@ function getBlockIcon(type: string) {
   }
 }
 
-function isInteractiveBlock(type: string) {
-  return ["micro_challenge", "reasoning_response", "peer_compare", "poll", "mcq", "multi_select", "short_answer", "debate", "exit_ticket", "scenario", "dilemma_tree"].includes(type);
+function isInteractiveBlock(type: string, config?: Record<string, unknown>) {
+  if (type === "video" && config && videoHasCheckpoints(config)) return true;
+  return ["micro_challenge", "reasoning_response", "peer_compare", "poll", "mcq", "multi_select", "short_answer", "debate", "exit_ticket", "scenario", "dilemma_tree", "concept_reveal"].includes(type);
 }
 
 function videoHasCheckpoints(config: Record<string, unknown>): boolean {
@@ -311,7 +312,7 @@ export default function TeacherLiveSession() {
 
   // ---------- PRESENTATION MODE ----------
   const step = steps[currentStep];
-  const isInteractive = step ? isInteractiveBlock(step.block_type) : false;
+  const isInteractive = step ? isInteractiveBlock(step.block_type, step.config) : false;
   const config = step?.config as Record<string, unknown>;
   const progress = steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
 
@@ -465,7 +466,37 @@ export default function TeacherLiveSession() {
                 </div>
               )}
 
-              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare"].includes(step.block_type) && (
+              {(step.block_type === "poll" || step.block_type === "multi_select") && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{step.body ?? "Vote below"}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(((config.options as string[]) ?? []).map((opt: string, i: number) => (
+                      <div key={i} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3 hover:border-primary/30 transition-colors">
+                        <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                          {String.fromCharCode(65 + i)}
+                        </span>
+                        <span className="text-foreground font-medium">{opt}</span>
+                      </div>
+                    )))}
+                  </div>
+                  <div className="flex items-center gap-2 justify-center pt-2">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      📊 Students voting on their devices
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {step.block_type === "short_answer" && (
+                <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? ""}</p>
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                    ✍️ Students typing on their devices
+                  </span>
+                </div>
+              )}
+
+              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer"].includes(step.block_type) && (
                 <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
                   <span className="text-5xl">{getBlockIcon(step.block_type)}</span>
                   <p className="text-lg font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>
