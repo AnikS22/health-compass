@@ -22,7 +22,7 @@ type Block = {
 };
 
 const BLOCK_TYPES = [
-  "video", "video_checkpoint", "poll", "mcq", "multi_select", "short_answer", "scenario",
+  "video", "poll", "mcq", "multi_select", "short_answer", "scenario",
   "dilemma_tree", "drag_drop", "matching", "debate", "group_board",
   "collaborative_board", "drawing", "red_team", "exit_ticket",
   "concept_reveal", "micro_challenge", "reasoning_response", "peer_compare",
@@ -32,7 +32,7 @@ const BLOCK_TYPES = [
 const GRADE_BANDS = ["K-2", "3-5", "6-8", "9-10", "11-12"];
 
 function blockIcon(type: string) {
-  if (type === "video" || type === "video_checkpoint") return <Video className="w-3.5 h-3.5" />;
+  if (type === "video") return <Video className="w-3.5 h-3.5" />;
   if (type === "mcq" || type === "multi_select" || type === "poll") return <HelpCircle className="w-3.5 h-3.5" />;
   if (type === "short_answer" || type === "reasoning_response") return <MessageSquare className="w-3.5 h-3.5" />;
   return <FileText className="w-3.5 h-3.5" />;
@@ -57,13 +57,111 @@ function YouTubeEmbed({ url }: { url: string }) {
 /* ── Block Config Editor: renders type-specific fields ── */
 function BlockConfigEditor({ blockType, config, onChange }: { blockType: string; config: any; onChange: (c: any) => void }) {
   if (blockType === "video") {
+    const checkpoints = Array.isArray(config.checkpoints) ? config.checkpoints : [];
+    const CHECKPOINT_BLOCK_TYPES = BLOCK_TYPES.filter(t => t !== "video");
     return (
-      <div className="space-y-2">
-        <label className="text-xs font-semibold text-foreground">YouTube URL</label>
-        <input value={config.youtube_url || ""} onChange={e => onChange({ ...config, youtube_url: e.target.value })}
-          placeholder="https://youtube.com/watch?v=..."
+      <div className="space-y-3">
+        <label className="text-xs font-semibold text-foreground">Video URL</label>
+        <input value={config.video_url || config.youtube_url || ""} onChange={e => {
+          const url = e.target.value;
+          // Detect YouTube vs direct
+          const isYT = /youtu\.?be/.test(url);
+          if (isYT) {
+            onChange({ ...config, youtube_url: url, video_url: undefined });
+          } else {
+            onChange({ ...config, video_url: url, youtube_url: undefined });
+          }
+        }}
+          placeholder="YouTube or direct video URL (mp4/webm)"
           className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
         {config.youtube_url && <YouTubeEmbed url={config.youtube_url} />}
+
+        {/* Checkpoints section */}
+        <div className="border-t border-border pt-3 mt-3">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-foreground">📍 Interactive Checkpoints ({checkpoints.length})</label>
+            <button type="button" onClick={() => {
+              const newCp = {
+                id: `cp-${Date.now()}`,
+                timestamp_seconds: 0,
+                block_type: "mcq",
+                title: "",
+                body: "",
+                config: { options: ["Option A", "Option B"], correct_answer: "Option A" },
+              };
+              onChange({ ...config, checkpoints: [...checkpoints, newCp] });
+            }} className="text-xs text-primary hover:underline font-medium">+ Add Checkpoint</button>
+          </div>
+          {checkpoints.length === 0 && (
+            <p className="text-xs text-muted-foreground mt-1 italic">No checkpoints — video will play without interruptions. Add checkpoints to insert interactive activities at specific timestamps.</p>
+          )}
+
+          {checkpoints.map((cp: any, cpIdx: number) => {
+            const updateCp = (patch: any) => {
+              const updated = [...checkpoints];
+              updated[cpIdx] = { ...cp, ...patch };
+              onChange({ ...config, checkpoints: updated });
+            };
+            return (
+              <div key={cp.id || cpIdx} className="border-2 border-primary/20 rounded-xl p-4 space-y-3 bg-card mt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">{cpIdx + 1}</span>
+                    <span className="text-sm font-bold text-foreground">Checkpoint</span>
+                  </div>
+                  <button type="button" onClick={() => {
+                    const updated = checkpoints.filter((_: any, i: number) => i !== cpIdx);
+                    onChange({ ...config, checkpoints: updated });
+                  }} className="text-xs text-destructive hover:underline">Remove</button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground font-medium">Timestamp (seconds)</label>
+                    <input type="number" value={cp.timestamp_seconds || 0} onChange={e => updateCp({ timestamp_seconds: parseInt(e.target.value) || 0 })}
+                      className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      = {String(Math.floor((cp.timestamp_seconds || 0) / 60)).padStart(2, "0")}:{String(Math.floor((cp.timestamp_seconds || 0) % 60)).padStart(2, "0")}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground font-medium">Block Type</label>
+                    <select value={cp.block_type || "mcq"} onChange={e => updateCp({ block_type: e.target.value, config: {} })}
+                      className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground">
+                      {CHECKPOINT_BLOCK_TYPES.map(t => (
+                        <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium">Checkpoint Title (optional)</label>
+                  <input value={cp.title || ""} onChange={e => updateCp({ title: e.target.value })}
+                    placeholder="e.g. Quick Check"
+                    className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium">Body Text (optional)</label>
+                  <textarea value={cp.body || ""} rows={2} onChange={e => updateCp({ body: e.target.value })}
+                    placeholder="Instructions or context for this checkpoint..."
+                    className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
+                </div>
+
+                <div className="border border-border rounded-lg p-3 bg-background/50">
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2">
+                    {(cp.block_type || "mcq").replace(/_/g, " ")} configuration
+                  </p>
+                  <BlockConfigEditor
+                    blockType={cp.block_type || "mcq"}
+                    config={cp.config || {}}
+                    onChange={(newConfig: any) => updateCp({ config: newConfig })}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -396,102 +494,7 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
       </div>
     );
   }
-  if (blockType === "video_checkpoint") {
-    const checkpoints = Array.isArray(config.checkpoints) ? config.checkpoints : [];
-    const CHECKPOINT_BLOCK_TYPES = BLOCK_TYPES.filter(t => t !== "video_checkpoint");
-    return (
-      <div className="space-y-3">
-        <label className="text-xs font-semibold text-foreground">Video URL (direct mp4/webm — not YouTube)</label>
-        <input value={config.video_url || ""} onChange={e => onChange({ ...config, video_url: e.target.value })}
-          placeholder="https://cdn.example.com/lesson.mp4"
-          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-
-        <div className="flex items-center justify-between mt-4">
-          <label className="text-xs font-semibold text-foreground">📍 Checkpoints ({checkpoints.length})</label>
-          <button type="button" onClick={() => {
-            const newCp = {
-              id: `cp-${Date.now()}`,
-              timestamp_seconds: 0,
-              block_type: "mcq",
-              title: "",
-              body: "",
-              config: { options: ["Option A", "Option B"], correct_answer: "Option A" },
-            };
-            onChange({ ...config, checkpoints: [...checkpoints, newCp] });
-          }} className="text-xs text-primary hover:underline font-medium">+ Add Checkpoint</button>
-        </div>
-
-        {checkpoints.map((cp: any, cpIdx: number) => {
-          const updateCp = (patch: any) => {
-            const updated = [...checkpoints];
-            updated[cpIdx] = { ...cp, ...patch };
-            onChange({ ...config, checkpoints: updated });
-          };
-          return (
-            <div key={cp.id || cpIdx} className="border-2 border-primary/20 rounded-xl p-4 space-y-3 bg-card">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">{cpIdx + 1}</span>
-                  <span className="text-sm font-bold text-foreground">Checkpoint</span>
-                </div>
-                <button type="button" onClick={() => {
-                  const updated = checkpoints.filter((_: any, i: number) => i !== cpIdx);
-                  onChange({ ...config, checkpoints: updated });
-                }} className="text-xs text-destructive hover:underline">Remove</button>
-              </div>
-
-              {/* Timestamp */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground font-medium">Timestamp (seconds)</label>
-                  <input type="number" value={cp.timestamp_seconds || 0} onChange={e => updateCp({ timestamp_seconds: parseInt(e.target.value) || 0 })}
-                    className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    = {String(Math.floor((cp.timestamp_seconds || 0) / 60)).padStart(2, "0")}:{String(Math.floor((cp.timestamp_seconds || 0) % 60)).padStart(2, "0")}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground font-medium">Block Type</label>
-                  <select value={cp.block_type || "mcq"} onChange={e => updateCp({ block_type: e.target.value, config: {} })}
-                    className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground">
-                    {CHECKPOINT_BLOCK_TYPES.map(t => (
-                      <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Title & Body */}
-              <div>
-                <label className="text-xs text-muted-foreground font-medium">Checkpoint Title (optional)</label>
-                <input value={cp.title || ""} onChange={e => updateCp({ title: e.target.value })}
-                  placeholder="e.g. Quick Check"
-                  className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground font-medium">Body Text (optional)</label>
-                <textarea value={cp.body || ""} rows={2} onChange={e => updateCp({ body: e.target.value })}
-                  placeholder="Instructions or context for this checkpoint..."
-                  className="w-full px-2 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none" />
-              </div>
-
-              {/* Embedded block config editor */}
-              <div className="border border-border rounded-lg p-3 bg-background/50">
-                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2">
-                  {(cp.block_type || "mcq").replace(/_/g, " ")} configuration
-                </p>
-                <BlockConfigEditor
-                  blockType={cp.block_type || "mcq"}
-                  config={cp.config || {}}
-                  onChange={(newConfig: any) => updateCp({ config: newConfig })}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
+  // video_checkpoint is now handled by "video" block type above
   // Fallback: raw JSON editor for unknown types
   return (
     <div className="space-y-2">
@@ -506,7 +509,28 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
 /* ── Block Preview (read-only view) ── */
 function BlockPreview({ block }: { block: Block }) {
   const cfg = block.config as any;
-  if (block.block_type === "video" && cfg?.youtube_url) return <YouTubeEmbed url={cfg.youtube_url} />;
+  if (block.block_type === "video" && cfg?.youtube_url && !Array.isArray(cfg?.checkpoints)) return <YouTubeEmbed url={cfg.youtube_url} />;
+  if (block.block_type === "video") {
+    const url = cfg?.video_url || cfg?.youtube_url || "";
+    const cps = Array.isArray(cfg?.checkpoints) ? cfg.checkpoints : [];
+    const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+    if (url) {
+      return (
+        <div className="mt-2 space-y-1">
+          {cfg?.youtube_url && <YouTubeEmbed url={cfg.youtube_url} />}
+          {!cfg?.youtube_url && <p className="text-xs text-muted-foreground truncate">🎬 {url}</p>}
+          {cps.length > 0 && cps.map((cp: any, i: number) => (
+            <div key={cp.id || i} className="px-3 py-1.5 rounded-lg text-xs bg-secondary text-muted-foreground flex items-center gap-2">
+              <span className="font-mono font-bold text-foreground">{fmtTime(cp.timestamp_seconds)}</span>
+              <span className="uppercase text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">{(cp.block_type || "?").replace(/_/g, " ")}</span>
+              <span className="truncate">{cp.title || cp.body || ""}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  }
   if ((block.block_type === "mcq" || block.block_type === "multi_select") && Array.isArray(cfg?.options)) {
     return (
       <div className="mt-2 space-y-1">
@@ -557,22 +581,7 @@ function BlockPreview({ block }: { block: Block }) {
       </div>
     );
   }
-  if (block.block_type === "video_checkpoint" && cfg?.video_url) {
-    const cps = Array.isArray(cfg.checkpoints) ? cfg.checkpoints : [];
-    const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-    return (
-      <div className="mt-2 space-y-1">
-        <p className="text-xs text-muted-foreground truncate">🎬 {cfg.video_url}</p>
-        {cps.map((cp: any, i: number) => (
-          <div key={cp.id || i} className="px-3 py-1.5 rounded-lg text-xs bg-secondary text-muted-foreground flex items-center gap-2">
-            <span className="font-mono font-bold text-foreground">{fmtTime(cp.timestamp_seconds)}</span>
-            <span className="uppercase text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">{(cp.block_type || cp.activity?.type || "?").replace(/_/g, " ")}</span>
-            <span className="truncate">{cp.title || cp.body || cp.activity?.prompt || ""}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  // video_checkpoint preview handled by "video" block above
   return null;
 }
 
