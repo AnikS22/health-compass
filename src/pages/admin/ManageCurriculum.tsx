@@ -837,7 +837,12 @@ export default function ManageCurriculum() {
     [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
     const withNewSeq = reordered.map((b, i) => ({ ...b, sequence_no: i + 1 }));
     setBlocks(withNewSeq);
-    // Persist
+    // Persist: two-phase to avoid unique constraint on (lesson_version_id, sequence_no)
+    // Phase 1: set all to negative temporaries
+    await Promise.all(
+      withNewSeq.map((b, i) => supabase.from("lesson_blocks").update({ sequence_no: -(i + 1) }).eq("id", b.id))
+    );
+    // Phase 2: set to final positive values
     await Promise.all(
       withNewSeq.map(b => supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", b.id))
     );
@@ -899,16 +904,21 @@ export default function ManageCurriculum() {
     const withNewSeq = reordered.map((b, i) => ({ ...b, sequence_no: i + 1 }));
     setBlocks(withNewSeq);
 
-    // Persist to DB
+    // Persist to DB: two-phase to avoid unique constraint on (lesson_version_id, sequence_no)
     try {
-      const updates = withNewSeq.map((b) =>
-        supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", b.id)
+      // Phase 1: set all to negative temporaries
+      await Promise.all(
+        withNewSeq.map((b, i) => supabase.from("lesson_blocks").update({ sequence_no: -(i + 1) }).eq("id", b.id))
       );
-      const results = await Promise.all(updates);
+      // Phase 2: set to final positive values
+      const results = await Promise.all(
+        withNewSeq.map((b) =>
+          supabase.from("lesson_blocks").update({ sequence_no: b.sequence_no }).eq("id", b.id)
+        )
+      );
       const hasError = results.some(r => r.error);
       if (hasError) {
         console.error("Failed to persist block order", results.filter(r => r.error).map(r => r.error));
-        // Reload from DB to get correct state
         if (selectedVersion) loadBlocks(selectedVersion);
       }
     } catch (err) {
