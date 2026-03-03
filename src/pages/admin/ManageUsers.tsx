@@ -344,6 +344,13 @@ function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSel
                 <option key={o.id} value={o.id}>{o.name}</option>
               ))}
             </select>
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex flex-col gap-1">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
+              {u.is_active ? "Active" : "Inactive"}
+            </span>
             {!u.organization_id && u.roles.includes("student") && (
               <span className="flex items-center gap-1 text-[11px] font-medium text-primary">
                 <Compass className="w-3 h-3" /> Self-Paced
@@ -352,12 +359,7 @@ function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSel
           </div>
         </td>
         <td className="px-4 py-3">
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
-            {u.is_active ? "Active" : "Inactive"}
-          </span>
-        </td>
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => toggleActive(u)}
               className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
@@ -365,14 +367,35 @@ function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSel
               {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
               {u.is_active ? "Deactivate" : "Activate"}
             </button>
-            {(u.organization_id || !u.roles.includes("student")) && (
+            {/* Toggle self-paced: show "Make Self-Paced" or "Remove Self-Paced" */}
+            {u.roles.includes("student") && (
+              !u.organization_id ? (
+                <span
+                  className="flex items-center gap-1 text-xs font-medium text-primary/70"
+                  title="Assign an organization above to remove self-paced status"
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  Self-Paced ✓
+                </span>
+              ) : (
+                <button
+                  onClick={() => setSelfPaced(u.id)}
+                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary hover:underline"
+                  title="Remove org and set as independent self-paced student"
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  Make Self-Paced
+                </button>
+              )
+            )}
+            {!u.roles.includes("student") && (
               <button
                 onClick={() => setSelfPaced(u.id)}
                 className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary hover:underline"
-                title="Set as independent self-paced student"
+                title="Set as independent self-paced student (adds student role, removes org)"
               >
                 <Compass className="w-3.5 h-3.5" />
-                Self-Paced
+                Make Self-Paced
               </button>
             )}
           </div>
