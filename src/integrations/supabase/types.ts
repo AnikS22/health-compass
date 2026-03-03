@@ -1717,6 +1717,10 @@ export type Database = {
     }
     Functions: {
       get_app_user_id: { Args: never; Returns: string }
+      get_teacher_student_ids: {
+        Args: { _teacher_app_id: string }
+        Returns: string[]
+      }
       get_user_org_id: { Args: never; Returns: string }
       has_role: {
         Args: {
