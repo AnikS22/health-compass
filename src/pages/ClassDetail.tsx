@@ -296,6 +296,7 @@ export default function ClassDetail() {
                   <th className="text-left p-4 text-xs text-muted-foreground font-semibold uppercase tracking-wider">Name</th>
                   <th className="text-left p-4 text-xs text-muted-foreground font-semibold uppercase tracking-wider">Email</th>
                   <th className="text-left p-4 text-xs text-muted-foreground font-semibold uppercase tracking-wider">Status</th>
+                  <th className="w-10"></th>
                 </tr>
               </thead>
               <tbody>
