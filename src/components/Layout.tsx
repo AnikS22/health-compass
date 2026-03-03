@@ -7,7 +7,6 @@ import {
   ClipboardList,
   BarChart3,
   LogOut,
-  Scale,
   Podcast,
   Building2,
   GraduationCap,
@@ -59,8 +58,8 @@ export default function Layout() {
         {/* Brand */}
         <div className="p-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-              <Scale className="w-5 h-5 text-primary-foreground" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 p-1 flex items-center justify-center shadow-sm">
+              <img src="/ethicslabs-logo.svg" alt="EthicsLabs logo" className="w-full h-full rounded-lg object-cover" />
             </div>
             <div>
               <h1 className="text-base font-extrabold text-foreground tracking-tight leading-tight">

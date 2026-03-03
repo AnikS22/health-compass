@@ -1,12 +1,11 @@
 import { Link } from "react-router-dom";
-import { Scale } from "lucide-react";
 
 export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center space-y-6">
-        <div className="w-16 h-16 rounded-3xl bg-primary/10 mx-auto flex items-center justify-center">
-          <Scale className="w-8 h-8 text-primary" />
+        <div className="w-16 h-16 rounded-3xl bg-primary/10 border border-primary/20 mx-auto flex items-center justify-center p-2">
+          <img src="/ethicslabs-logo.svg" alt="EthicsLabs logo" className="w-full h-full rounded-2xl object-cover" />
         </div>
         <div>
           <h1 className="text-7xl font-extrabold text-primary tracking-tight">404</h1>

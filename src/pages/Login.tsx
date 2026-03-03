@@ -1,4 +1,4 @@
-import { Scale, Mail, Lock, User, BookOpen, School } from "lucide-react";
+import { Mail, Lock, User, BookOpen, School } from "lucide-react";
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -83,8 +83,8 @@ export default function Login() {
 
       <div className="relative w-full max-w-sm space-y-8">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-3xl bg-primary mx-auto flex items-center justify-center mb-5 shadow-lg">
-            <Scale className="w-8 h-8 text-primary-foreground" />
+          <div className="w-16 h-16 rounded-3xl bg-primary/10 border border-primary/20 mx-auto flex items-center justify-center mb-5 shadow-lg p-2">
+            <img src="/ethicslabs-logo.svg" alt="EthicsLabs logo" className="w-full h-full rounded-2xl object-cover" />
           </div>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight">
             The Ethics Lab

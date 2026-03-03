@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="EthicsLabs logo">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8cf67" />
+      <stop offset="100%" stop-color="#f2b705" />
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#bg)" />
+  <path d="M128 70v28M86 98h84M92 114h72M106 130h44" stroke="#1f2937" stroke-width="10" stroke-linecap="round" />
+  <path d="M128 70c-16 0-28 12-28 28s12 28 28 28 28-12 28-28-12-28-28-28Z" fill="none" stroke="#1f2937" stroke-width="10" />
+  <path d="M80 170c0 26 21 47 48 47s48-21 48-47" fill="none" stroke="#1f2937" stroke-width="10" stroke-linecap="round" />
+  <circle cx="98" cy="170" r="10" fill="#1f2937" />
+  <circle cx="158" cy="170" r="10" fill="#1f2937" />
+</svg>
