@@ -23,6 +23,11 @@ import ManageCurriculum from "./pages/admin/ManageCurriculum";
 import ManageUsers from "./pages/admin/ManageUsers";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import SelfPacedCurriculum from "./pages/SelfPacedCurriculum";
+import SchoolAdminDashboard from "./pages/school-admin/SchoolAdminDashboard";
+import SchoolTeachers from "./pages/school-admin/SchoolTeachers";
+import SchoolStudents from "./pages/school-admin/SchoolStudents";
+import SchoolClasses from "./pages/school-admin/SchoolClasses";
+import SchoolProfile from "./pages/school-admin/SchoolProfile";
 
 export default function App() {
   return (
@@ -43,6 +48,11 @@ export default function App() {
           <Route path="/assignments" element={<Assignments />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/explore" element={<SelfPacedCurriculum />} />
+          {/* School Admin routes */}
+          <Route path="/school/teachers" element={<SchoolTeachers />} />
+          <Route path="/school/students" element={<SchoolStudents />} />
+          <Route path="/school/classes" element={<SchoolClasses />} />
+          <Route path="/school/profile" element={<SchoolProfile />} />
           {/* Admin routes */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/schools" element={<ManageSchools />} />

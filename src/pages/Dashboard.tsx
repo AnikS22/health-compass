@@ -5,6 +5,7 @@ import StatCard from "@/components/StatCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AdminDashboard from "./admin/AdminDashboard";
+import SchoolAdminDashboard from "./school-admin/SchoolAdminDashboard";
 
 type RecentSession = {
   id: string;
@@ -25,6 +26,7 @@ export default function Dashboard() {
 
   if (role === "student") return <StudentDashboard appUserId={appUserId} navigate={navigate} />;
   if (role === "ethics_admin") return <AdminDashboard />;
+  if (role === "school_admin") return <SchoolAdminDashboard />;
   return <TeacherDashboard />;
 }
 
