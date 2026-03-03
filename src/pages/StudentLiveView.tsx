@@ -27,6 +27,8 @@ function isInteractiveBlock(type: string, config?: Record<string, unknown>) {
     "micro_challenge", "reasoning_response", "peer_compare",
     "poll", "mcq", "multi_select", "short_answer", "debate",
     "exit_ticket", "scenario", "dilemma_tree", "concept_reveal",
+    "collaborative_board", "group_board", "group_challenge",
+    "peer_review", "drag_drop", "matching", "drawing", "red_team",
   ].includes(type);
 }
 
@@ -440,10 +442,11 @@ export default function StudentLiveView() {
                   onComplete={(r) => handleStepComplete(r)}
                 />
               )}
-              {step && !["concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "video"].includes(step.block_type) && (
+              {step && ["short_answer", "exit_ticket", "scenario", "dilemma_tree", "debate", "collaborative_board", "group_board", "group_challenge", "peer_review", "drag_drop", "matching", "drawing", "red_team"].includes(step.block_type) && (
                 <div className="space-y-4">
                   {step.body && <p className="text-lg text-foreground">{step.body}</p>}
                   <textarea
+                    id={`response-${step.id}`}
                     placeholder="Type your response…"
                     rows={4}
                     className="w-full rounded-xl border-2 border-border bg-card text-foreground px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors resize-none placeholder:text-muted-foreground"
@@ -454,7 +457,10 @@ export default function StudentLiveView() {
                     }}
                   />
                   <button
-                    onClick={() => handleStepComplete({ text: "response" })}
+                    onClick={() => {
+                      const el = document.getElementById(`response-${step.id}`) as HTMLTextAreaElement | null;
+                      handleStepComplete({ text: el?.value || "response" });
+                    }}
                     className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
                   >
                     Submit

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, Plus, Users, Mail, ArrowLeft, UserPlus, Globe } from "lucide-react";
+import { Building2, Plus, Users, Mail, ArrowLeft, UserPlus, Globe, Pencil, Trash2, X, Check } from "lucide-react";
 
 interface Org {
   id: string;
@@ -30,6 +30,17 @@ export default function ManageSchools() {
   const [selectedOrg, setSelectedOrg] = useState<Org | null>(null);
   const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
 
+  // Edit org
+  const [editingOrg, setEditingOrg] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
+  const [editDomain, setEditDomain] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Delete confirm
+  const [deletingOrgId, setDeletingOrgId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Add teacher form
   const [showAddTeacher, setShowAddTeacher] = useState(false);
   const [teacherEmail, setTeacherEmail] = useState("");
@@ -37,6 +48,13 @@ export default function ManageSchools() {
   const [teacherPassword, setTeacherPassword] = useState("");
   const [addingTeacher, setAddingTeacher] = useState(false);
   const [addStatus, setAddStatus] = useState("");
+
+  // Detail view editing
+  const [editingDetail, setEditingDetail] = useState(false);
+  const [detailName, setDetailName] = useState("");
+  const [detailSlug, setDetailSlug] = useState("");
+  const [detailDomain, setDetailDomain] = useState("");
+  const [savingDetail, setSavingDetail] = useState(false);
 
   async function loadOrgs() {
     setLoading(true);
@@ -73,10 +91,37 @@ export default function ManageSchools() {
     setCreating(false);
   }
 
+  async function saveEditInline(orgId: string) {
+    if (!editName.trim() || !editSlug.trim()) return;
+    setSavingEdit(true);
+    await supabase.from("organizations").update({
+      name: editName.trim(),
+      tenant_slug: editSlug.trim().toLowerCase().replace(/\s+/g, "-"),
+      email_domain: editDomain.trim().toLowerCase() || null,
+    }).eq("id", orgId);
+    setEditingOrg(null);
+    setSavingEdit(false);
+    loadOrgs();
+  }
+
+  async function deleteOrg(orgId: string) {
+    setDeleting(true);
+    // Unassign all users from this org first
+    await supabase.from("users").update({ organization_id: null }).eq("organization_id", orgId);
+    await supabase.from("organizations").delete().eq("id", orgId);
+    setDeletingOrgId(null);
+    setDeleting(false);
+    loadOrgs();
+  }
+
   async function selectOrg(org: Org) {
     setSelectedOrg(org);
     setShowAddTeacher(false);
     setAddStatus("");
+    setEditingDetail(false);
+    setDetailName(org.name);
+    setDetailSlug(org.tenant_slug);
+    setDetailDomain(org.email_domain ?? "");
     const { data: users } = await supabase
       .from("users").select("id, display_name, email, is_active")
       .eq("organization_id", org.id).order("display_name");
@@ -96,12 +141,36 @@ export default function ManageSchools() {
     if (selectedOrg) selectOrg(selectedOrg);
   }
 
+  async function saveDetailEdit() {
+    if (!selectedOrg || !detailName.trim() || !detailSlug.trim()) return;
+    setSavingDetail(true);
+    await supabase.from("organizations").update({
+      name: detailName.trim(),
+      tenant_slug: detailSlug.trim().toLowerCase().replace(/\s+/g, "-"),
+      email_domain: detailDomain.trim().toLowerCase() || null,
+    }).eq("id", selectedOrg.id);
+    const updated = { ...selectedOrg, name: detailName.trim(), tenant_slug: detailSlug.trim(), email_domain: detailDomain.trim() || null };
+    setSelectedOrg(updated);
+    setEditingDetail(false);
+    setSavingDetail(false);
+    loadOrgs();
+  }
+
+  async function deleteSelectedOrg() {
+    if (!selectedOrg) return;
+    setDeleting(true);
+    await supabase.from("users").update({ organization_id: null }).eq("organization_id", selectedOrg.id);
+    await supabase.from("organizations").delete().eq("id", selectedOrg.id);
+    setDeleting(false);
+    setSelectedOrg(null);
+    loadOrgs();
+  }
+
   async function addTeacherToSchool() {
     if (!teacherEmail.trim() || !teacherName.trim() || !teacherPassword.trim() || !selectedOrg) return;
     setAddingTeacher(true);
     setAddStatus("");
 
-    // Use edge function to create the teacher account
     const { data, error } = await supabase.functions.invoke("create-teacher", {
       body: {
         email: teacherEmail.trim(),
@@ -124,6 +193,7 @@ export default function ManageSchools() {
     setAddingTeacher(false);
   }
 
+  // ── Detail view ──
   if (selectedOrg) {
     return (
       <div className="p-6 space-y-6">
@@ -134,22 +204,65 @@ export default function ManageSchools() {
         </div>
 
         <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold text-foreground">{selectedOrg.name}</h1>
-              <div className="flex gap-3 text-sm text-muted-foreground mt-0.5">
-                <span>Slug: {selectedOrg.tenant_slug}</span>
-                {selectedOrg.email_domain && (
-                  <span className="flex items-center gap-1">
-                    <Globe className="w-3.5 h-3.5" /> @{selectedOrg.email_domain}
-                  </span>
-                )}
+          {editingDetail ? (
+            <div className="space-y-3">
+              <h2 className="text-base font-bold text-foreground">Edit School Details</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Name</label>
+                  <input value={detailName} onChange={e => setDetailName(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Slug</label>
+                  <input value={detailSlug} onChange={e => setDetailSlug(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Email Domain</label>
+                  <input value={detailDomain} onChange={e => setDetailDomain(e.target.value)} placeholder="e.g. school.edu"
+                    className="w-full mt-1 px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={saveDetailEdit} disabled={savingDetail}
+                  className="flex items-center gap-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:opacity-90 disabled:opacity-50">
+                  <Check className="w-3.5 h-3.5" /> {savingDetail ? "Saving…" : "Save"}
+                </button>
+                <button onClick={() => setEditingDetail(false)}
+                  className="flex items-center gap-1 px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </button>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-2xl font-extrabold text-foreground">{selectedOrg.name}</h1>
+                <div className="flex gap-3 text-sm text-muted-foreground mt-0.5">
+                  <span>Slug: {selectedOrg.tenant_slug}</span>
+                  {selectedOrg.email_domain && (
+                    <span className="flex items-center gap-1">
+                      <Globe className="w-3.5 h-3.5" /> @{selectedOrg.email_domain}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setEditingDetail(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-secondary transition-colors">
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button onClick={deleteSelectedOrg} disabled={deleting}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-destructive/30 rounded-lg text-xs font-semibold text-destructive hover:bg-destructive/5 transition-colors disabled:opacity-50">
+                  <Trash2 className="w-3.5 h-3.5" /> {deleting ? "Deleting…" : "Delete"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between">
@@ -231,12 +344,13 @@ export default function ManageSchools() {
     );
   }
 
+  // ── List view ──
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">Manage Schools</h1>
-          <p className="text-sm text-muted-foreground">Create schools and manage their members</p>
+          <p className="text-sm text-muted-foreground">Create, edit, and delete schools</p>
         </div>
         <button onClick={() => setShowCreate(!showCreate)}
           className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
@@ -253,7 +367,7 @@ export default function ManageSchools() {
             className="w-full px-4 py-2.5 bg-background border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
           <input placeholder="Email domain for auto-sorting (optional, e.g. fau.edu)" value={newDomain} onChange={e => setNewDomain(e.target.value)}
             className="w-full px-4 py-2.5 bg-background border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
-          <p className="text-xs text-muted-foreground">Optional — Users with matching .edu email domains will be auto-sorted to this school. Leave blank if not needed.</p>
+          <p className="text-xs text-muted-foreground">Optional — Users with matching .edu email domains will be auto-sorted to this school.</p>
           <button onClick={createOrg} disabled={creating}
             className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50">
             {creating ? "Creating…" : "Create"}
@@ -266,24 +380,77 @@ export default function ManageSchools() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {orgs.map(org => (
-            <button key={org.id} onClick={() => selectOrg(org)}
-              className="text-left bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-colors">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-primary" />
+            <div key={org.id} className="bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-colors relative group">
+              {/* Delete confirmation overlay */}
+              {deletingOrgId === org.id && (
+                <div className="absolute inset-0 bg-card/95 rounded-xl flex flex-col items-center justify-center z-10 p-4 space-y-3">
+                  <p className="text-sm font-bold text-destructive text-center">Delete "{org.name}"?</p>
+                  <p className="text-xs text-muted-foreground text-center">All members will be unassigned. This cannot be undone.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => deleteOrg(org.id)} disabled={deleting}
+                      className="px-3 py-1.5 bg-destructive text-destructive-foreground rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+                      {deleting ? "Deleting…" : "Delete"}
+                    </button>
+                    <button onClick={() => setDeletingOrgId(null)}
+                      className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-secondary">
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-foreground">{org.name}</h3>
-                  <p className="text-xs text-muted-foreground">{org.tenant_slug}</p>
+              )}
+
+              {/* Inline edit mode */}
+              {editingOrg === org.id ? (
+                <div className="space-y-2">
+                  <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Name"
+                    className="w-full px-3 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground" />
+                  <input value={editSlug} onChange={e => setEditSlug(e.target.value)} placeholder="Slug"
+                    className="w-full px-3 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground" />
+                  <input value={editDomain} onChange={e => setEditDomain(e.target.value)} placeholder="Email domain (optional)"
+                    className="w-full px-3 py-1.5 bg-background border border-input rounded-lg text-sm text-foreground" />
+                  <div className="flex gap-2">
+                    <button onClick={() => saveEditInline(org.id)} disabled={savingEdit}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+                      <Check className="w-3 h-3" /> {savingEdit ? "Saving…" : "Save"}
+                    </button>
+                    <button onClick={() => setEditingOrg(null)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground">
+                      <X className="w-3 h-3" /> Cancel
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {org._memberCount ?? 0} members</span>
-                {org.email_domain && (
-                  <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> @{org.email_domain}</span>
-                )}
-              </div>
-            </button>
+              ) : (
+                <>
+                  <button onClick={() => selectOrg(org)} className="text-left w-full">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Building2 className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-foreground">{org.name}</h3>
+                        <p className="text-xs text-muted-foreground">{org.tenant_slug}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {org._memberCount ?? 0} members</span>
+                      {org.email_domain && (
+                        <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> @{org.email_domain}</span>
+                      )}
+                    </div>
+                  </button>
+                  <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); setEditingOrg(org.id); setEditName(org.name); setEditSlug(org.tenant_slug); setEditDomain(org.email_domain ?? ""); }}
+                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Edit">
+                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); setDeletingOrgId(org.id); }}
+                      className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors" title="Delete">
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           ))}
           {orgs.length === 0 && (
             <p className="text-muted-foreground text-sm col-span-full">No schools created yet</p>
