@@ -47,6 +47,7 @@ const schoolAdminNav = [
   { to: "/school/teachers", icon: GraduationCap, label: "Teachers" },
   { to: "/school/students", icon: Users, label: "Students" },
   { to: "/school/classes", icon: BookOpen, label: "Classes" },
+  { to: "/curriculum", icon: BookOpen, label: "Curriculum" },
   { to: "/school/profile", icon: Building2, label: "School Profile" },
 ];
 
