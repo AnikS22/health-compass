@@ -713,11 +713,12 @@ export default function ManageCurriculum() {
   }
 
   async function createCourse() {
-    if (!form.title?.trim() || !form.grade_band) return;
-    await supabase.from("courses").insert({
+    if (!form.title?.trim() || !form.grade_band) { alert("Please enter a title and select a grade band."); return; }
+    const { error } = await supabase.from("courses").insert({
       title: form.title.trim(), grade_band: form.grade_band,
       curriculum_package_id: form.curriculum_package_id || null
     });
+    if (error) { console.error("Create course error:", error); alert(`Failed to create course: ${error.message}`); return; }
     setShowCreateCourse(false); setForm({}); loadAll();
   }
 
