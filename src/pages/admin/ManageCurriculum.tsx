@@ -734,16 +734,18 @@ export default function ManageCurriculum() {
   }
 
   async function createLesson() {
-    if (!form.title?.trim() || !form.unit_id) return;
-    const { data: lesson } = await supabase.from("lessons").insert({
+    if (!form.title?.trim() || !form.unit_id) { alert("Please enter a title and select a unit."); return; }
+    const { data: lesson, error } = await supabase.from("lessons").insert({
       title: form.title.trim(), unit_id: form.unit_id,
       grade_band: form.grade_band || null, difficulty: form.difficulty || null,
       estimated_minutes: form.estimated_minutes ? parseInt(form.estimated_minutes) : null
     }).select("id").single();
+    if (error) { console.error("Create lesson error:", error); alert(`Failed to create lesson: ${error.message}`); return; }
     if (lesson) {
-      await supabase.from("lesson_versions").insert({
+      const { error: vErr } = await supabase.from("lesson_versions").insert({
         lesson_id: lesson.id, version_label: "v1", publish_status: "draft"
       });
+      if (vErr) { console.error("Create version error:", vErr); alert(`Lesson created but version failed: ${vErr.message}`); }
     }
     setShowCreateLesson(false); setForm({});
     if (selectedCourse) loadCourseLessons(selectedCourse);
