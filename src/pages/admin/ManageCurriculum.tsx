@@ -754,11 +754,12 @@ export default function ManageCurriculum() {
   async function createBlock() {
     if (!form.block_type || !selectedVersion) return;
     const maxSeq = Math.max(0, ...blocks.map(b => b.sequence_no));
-    await supabase.from("lesson_blocks").insert({
+    const { error } = await supabase.from("lesson_blocks").insert({
       lesson_version_id: selectedVersion, block_type: form.block_type,
       title: form.title?.trim() || null, body: form.body?.trim() || null,
       config: form.config || {}, sequence_no: maxSeq + 1
     });
+    if (error) { console.error("Create block error:", error); alert(`Failed to create block: ${error.message}`); return; }
     setShowCreateBlock(false); setForm({}); loadBlocks(selectedVersion);
   }
 
