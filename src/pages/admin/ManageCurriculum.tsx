@@ -725,9 +725,10 @@ export default function ManageCurriculum() {
   async function createUnit() {
     if (!form.title?.trim() || !selectedCourse) return;
     const maxSeq = Math.max(0, ...units.filter(u => u.course_id === selectedCourse).map(u => u.sequence_no));
-    await supabase.from("units").insert({
+    const { error } = await supabase.from("units").insert({
       title: form.title.trim(), course_id: selectedCourse, sequence_no: maxSeq + 1
     });
+    if (error) { console.error("Create unit error:", error); alert(`Failed to create unit: ${error.message}`); return; }
     setShowCreateUnit(false); setForm({}); loadAll();
     loadCourseLessons(selectedCourse);
   }
