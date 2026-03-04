@@ -707,7 +707,8 @@ export default function ManageCurriculum() {
   // ── CRUD ──
   async function createPackage() {
     if (!form.title?.trim() || !form.package_key?.trim()) return;
-    await supabase.from("curriculum_packages").insert({ title: form.title.trim(), package_key: form.package_key.trim() });
+    const { error } = await supabase.from("curriculum_packages").insert({ title: form.title.trim(), package_key: form.package_key.trim() });
+    if (error) { console.error("Create package error:", error); alert(`Failed to create package: ${error.message}`); return; }
     setShowCreatePkg(false); setForm({}); loadAll();
   }
 
