@@ -707,40 +707,45 @@ export default function ManageCurriculum() {
   // ── CRUD ──
   async function createPackage() {
     if (!form.title?.trim() || !form.package_key?.trim()) return;
-    await supabase.from("curriculum_packages").insert({ title: form.title.trim(), package_key: form.package_key.trim() });
+    const { error } = await supabase.from("curriculum_packages").insert({ title: form.title.trim(), package_key: form.package_key.trim() });
+    if (error) { console.error("Create package error:", error); alert(`Failed to create package: ${error.message}`); return; }
     setShowCreatePkg(false); setForm({}); loadAll();
   }
 
   async function createCourse() {
-    if (!form.title?.trim() || !form.grade_band) return;
-    await supabase.from("courses").insert({
+    if (!form.title?.trim() || !form.grade_band) { alert("Please enter a title and select a grade band."); return; }
+    const { error } = await supabase.from("courses").insert({
       title: form.title.trim(), grade_band: form.grade_band,
       curriculum_package_id: form.curriculum_package_id || null
     });
+    if (error) { console.error("Create course error:", error); alert(`Failed to create course: ${error.message}`); return; }
     setShowCreateCourse(false); setForm({}); loadAll();
   }
 
   async function createUnit() {
     if (!form.title?.trim() || !selectedCourse) return;
     const maxSeq = Math.max(0, ...units.filter(u => u.course_id === selectedCourse).map(u => u.sequence_no));
-    await supabase.from("units").insert({
+    const { error } = await supabase.from("units").insert({
       title: form.title.trim(), course_id: selectedCourse, sequence_no: maxSeq + 1
     });
+    if (error) { console.error("Create unit error:", error); alert(`Failed to create unit: ${error.message}`); return; }
     setShowCreateUnit(false); setForm({}); loadAll();
     loadCourseLessons(selectedCourse);
   }
 
   async function createLesson() {
-    if (!form.title?.trim() || !form.unit_id) return;
-    const { data: lesson } = await supabase.from("lessons").insert({
+    if (!form.title?.trim() || !form.unit_id) { alert("Please enter a title and select a unit."); return; }
+    const { data: lesson, error } = await supabase.from("lessons").insert({
       title: form.title.trim(), unit_id: form.unit_id,
       grade_band: form.grade_band || null, difficulty: form.difficulty || null,
       estimated_minutes: form.estimated_minutes ? parseInt(form.estimated_minutes) : null
     }).select("id").single();
+    if (error) { console.error("Create lesson error:", error); alert(`Failed to create lesson: ${error.message}`); return; }
     if (lesson) {
-      await supabase.from("lesson_versions").insert({
+      const { error: vErr } = await supabase.from("lesson_versions").insert({
         lesson_id: lesson.id, version_label: "v1", publish_status: "draft"
       });
+      if (vErr) { console.error("Create version error:", vErr); alert(`Lesson created but version failed: ${vErr.message}`); }
     }
     setShowCreateLesson(false); setForm({});
     if (selectedCourse) loadCourseLessons(selectedCourse);
@@ -749,11 +754,12 @@ export default function ManageCurriculum() {
   async function createBlock() {
     if (!form.block_type || !selectedVersion) return;
     const maxSeq = Math.max(0, ...blocks.map(b => b.sequence_no));
-    await supabase.from("lesson_blocks").insert({
+    const { error } = await supabase.from("lesson_blocks").insert({
       lesson_version_id: selectedVersion, block_type: form.block_type,
       title: form.title?.trim() || null, body: form.body?.trim() || null,
       config: form.config || {}, sequence_no: maxSeq + 1
     });
+    if (error) { console.error("Create block error:", error); alert(`Failed to create block: ${error.message}`); return; }
     setShowCreateBlock(false); setForm({}); loadBlocks(selectedVersion);
   }
 
