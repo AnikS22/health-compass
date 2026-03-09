@@ -108,14 +108,18 @@ export default function LiveSessions() {
 
   async function startSession(e: React.FormEvent) {
     e.preventDefault();
-    if (!classId || !lessonVersionId || !appUserId) return;
+    setErrorMsg(null);
+    if (!classId || !lessonVersionId || !appUserId) {
+      setErrorMsg("Please select a class and a published lesson version.");
+      return;
+    }
     setCreating(true);
 
     // Derive org from the selected class (works even if user has no org, e.g. ethics_admin)
     const selectedClass = classes.find((c) => c.id === classId);
     const orgId = selectedClass?.organization_id;
     if (!orgId) {
-      console.error("Failed to start session: selected class has no organization.");
+      setErrorMsg("Selected class has no organization. Cannot start session.");
       setCreating(false);
       return;
     }
@@ -130,7 +134,7 @@ export default function LiveSessions() {
     });
 
     if (error) {
-      console.error("Failed to start session:", error.message);
+      setErrorMsg(`Failed to start session: ${error.message}`);
     } else {
       setShowCreate(false);
       await loadData();
