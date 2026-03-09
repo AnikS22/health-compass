@@ -1151,6 +1151,11 @@ export default function ManageCurriculum() {
                     className="flex items-center gap-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90">
                     <Plus className="w-3 h-3" /> Lesson
                   </button>
+                  <button onClick={() => importFileRef.current?.click()} disabled={importing}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-secondary text-foreground rounded-lg text-xs font-bold hover:bg-secondary/80 disabled:opacity-50">
+                    {importing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />} Import JSON
+                  </button>
+                  <input ref={importFileRef} type="file" accept=".json,application/json" onChange={handleImportLesson} className="hidden" />
                 </div>
               </div>
 
