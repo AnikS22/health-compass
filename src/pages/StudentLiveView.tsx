@@ -148,11 +148,11 @@ export default function StudentLiveView() {
         break;
       case "next_block":
         setActiveIndex((i) => Math.min(i + 1, Math.max(steps.length - 1, 0)));
-        setLocked(false); setSubmitted(false);
+        setLocked(false); setSubmitted(false); setRevealedResults(null);
         break;
       case "previous_block":
         setActiveIndex((i) => Math.max(i - 1, 0));
-        setLocked(false); setSubmitted(false);
+        setLocked(false); setSubmitted(false); setRevealedResults(null);
         break;
       case "goto_block":
         if (typeof evt.step_index === "number") {
