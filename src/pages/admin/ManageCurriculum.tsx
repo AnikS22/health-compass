@@ -1446,24 +1446,41 @@ export default function ManageCurriculum() {
                       {lessons.filter(l => l.unit_id === unit.id).map(l => (
                         <div key={l.id}
                           className={`flex items-center justify-between px-4 py-2.5 border-b border-border last:border-b-0 transition-colors ${selectedLesson?.id === l.id ? "bg-primary/5" : "hover:bg-secondary/30"}`}>
-                          <button onClick={() => { setSelectedLesson(l); if (l.versions.length > 0) loadBlocks(l.versions[0].id); }}
-                            className="flex-1 text-left">
-                            <span className="text-sm font-medium text-foreground">{l.title}</span>
-                            <div className="flex gap-2 mt-0.5">
-                              {l.versions.map(v => (
-                                <span key={v.id} className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${v.publish_status === "published" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}>
-                                  {v.version_label} · {v.publish_status}
-                                </span>
-                              ))}
+                          {renamingLessonId === l.id ? (
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <input value={renameLessonTitle} onChange={e => setRenameLessonTitle(e.target.value)}
+                                onKeyDown={e => { if (e.key === "Enter") renameLesson(l.id); if (e.key === "Escape") setRenamingLessonId(null); }}
+                                autoFocus
+                                className="flex-1 px-2 py-1 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                              <button onClick={() => renameLesson(l.id)} className="px-2 py-0.5 bg-primary text-primary-foreground rounded text-xs font-bold">Save</button>
+                              <button onClick={() => setRenamingLessonId(null)} className="px-2 py-0.5 bg-secondary text-foreground rounded text-xs font-bold">✕</button>
                             </div>
-                          </button>
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => setConfirmDelete({ type: "lesson", id: l.id, name: l.title })}
-                              className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors" title="Delete lesson">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                          </div>
+                          ) : (
+                            <>
+                              <button onClick={() => { setSelectedLesson(l); if (l.versions.length > 0) loadBlocks(l.versions[0].id); }}
+                                className="flex-1 text-left">
+                                <span className="text-sm font-medium text-foreground">{l.title}</span>
+                                <div className="flex gap-2 mt-0.5">
+                                  {l.versions.map(v => (
+                                    <span key={v.id} className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${v.publish_status === "published" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}>
+                                      {v.version_label} · {v.publish_status}
+                                    </span>
+                                  ))}
+                                </div>
+                              </button>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => { setRenamingLessonId(l.id); setRenameLessonTitle(l.title); }}
+                                  className="p-1 rounded text-muted-foreground hover:text-primary transition-colors" title="Rename lesson">
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => setConfirmDelete({ type: "lesson", id: l.id, name: l.title })}
+                                  className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors" title="Delete lesson">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))}
                       {lessons.filter(l => l.unit_id === unit.id).length === 0 && (
