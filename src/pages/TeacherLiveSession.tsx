@@ -343,6 +343,57 @@ export default function TeacherLiveSession() {
   const config = step?.config as Record<string, unknown>;
   const progress = steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
 
+  // Aggregate poll/multi_select results
+  function getPollTallies(): { option: string; count: number }[] {
+    const options = ((config.options as string[]) ?? []);
+    const tally: Record<string, number> = {};
+    options.forEach(o => { tally[o] = 0; });
+    for (const r of liveResponses) {
+      const payload = r.response_payload;
+      if (payload.selected_option && typeof payload.selected_option === "string") {
+        tally[payload.selected_option] = (tally[payload.selected_option] ?? 0) + 1;
+      }
+      if (payload.selected_options && Array.isArray(payload.selected_options)) {
+        for (const opt of payload.selected_options) tally[opt] = (tally[opt] ?? 0) + 1;
+      }
+      if (payload.answer) {
+        if (typeof payload.answer === "string") tally[payload.answer] = (tally[payload.answer] ?? 0) + 1;
+        if (Array.isArray(payload.answer)) payload.answer.forEach((a: string) => { tally[a] = (tally[a] ?? 0) + 1; });
+      }
+    }
+    return options.map(o => ({ option: o, count: tally[o] ?? 0 }));
+  }
+
+  // Aggregate MCQ results
+  function getMcqTallies(): { option: string; count: number }[] {
+    const options = ((config.options as Array<{ id: string; text: string }>) ?? []);
+    const tally: Record<string, number> = {};
+    options.forEach(o => { tally[o.id] = 0; });
+    for (const r of liveResponses) {
+      const payload = r.response_payload;
+      const ans = (payload.selected_option ?? payload.answer) as string;
+      if (ans && tally[ans] !== undefined) tally[ans]++;
+    }
+    return options.map(o => ({ option: o.text, count: tally[o.id] ?? 0 }));
+  }
+
+  function getTextResponses(): string[] {
+    return liveResponses
+      .map(r => (r.response_payload.text ?? r.response_payload.answer ?? "") as string)
+      .filter(Boolean);
+  }
+
+  function handleRevealResults() {
+    setShowResults(true);
+    broadcast("reveal_results", {
+      block_id: step?.id,
+      tallies: (step?.block_type === "poll" || step?.block_type === "multi_select") ? getPollTallies() : undefined,
+      mcq_tallies: (step?.block_type === "micro_challenge" || (step?.block_type as string) === "mcq") ? getMcqTallies() : undefined,
+      text_responses: ["short_answer", "reasoning_response", "exit_ticket"].includes(step?.block_type ?? "") ? getTextResponses().slice(0, 20) : undefined,
+      response_count: liveResponses.length,
+    });
+  }
+
   return (
     <div ref={presentationRef} className="min-h-screen bg-background flex flex-col">
       {/* Top bar */}
