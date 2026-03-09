@@ -655,6 +655,8 @@ export default function ManageCurriculum() {
   const [showCreateLesson, setShowCreateLesson] = useState(false);
   const [showCreateBlock, setShowCreateBlock] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [importing, setImporting] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const loadAll = useCallback(async () => {
     const [pkgRes, courseRes, unitRes] = await Promise.all([
