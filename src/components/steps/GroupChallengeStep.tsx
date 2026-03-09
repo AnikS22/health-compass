@@ -27,6 +27,7 @@ export default function GroupChallengeStep({ config, body, onComplete, isLive }:
     if (submissionType === "text" && !response.trim()) return;
     if (submissionType === "choice" && !selectedChoice) return;
     setSubmitted(true);
+    onComplete(submissionType === "text" ? { text: response } : { selected_choice_id: selectedChoice! });
   }
 
   return (
