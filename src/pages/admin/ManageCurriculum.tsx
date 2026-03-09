@@ -957,10 +957,61 @@ export default function ManageCurriculum() {
     if (confirmDelete.type === "block") await deleteBlock(confirmDelete.id);
     else if (confirmDelete.type === "lesson") await deleteLesson(confirmDelete.id);
     else if (confirmDelete.type === "unit") await deleteUnit(confirmDelete.id);
+    else if (confirmDelete.type === "course") await deleteCourse(confirmDelete.id);
+    else if (confirmDelete.type === "package") await deletePackage(confirmDelete.id);
     setConfirmDelete(null);
   }
 
-  async function deleteLesson(lessonId: string) {
+  async function deletePackage(pkgId: string) {
+    // Delete all courses in this package first
+    const pkgCourses = courses.filter(c => c.curriculum_package_id === pkgId);
+    for (const c of pkgCourses) {
+      await deleteCourse(c.id);
+    }
+    await supabase.from("curriculum_packages").delete().eq("id", pkgId);
+    if (selectedCourse && pkgCourses.some(c => c.id === selectedCourse)) {
+      setSelectedCourse(null); setSelectedLesson(null); setSelectedVersion(null); setBlocks([]);
+    }
+    await loadAll();
+  }
+
+  async function deleteCourse(courseId: string) {
+    // Delete all units (which cascade-deletes lessons/blocks)
+    const courseUnitsLocal = units.filter(u => u.course_id === courseId);
+    for (const u of courseUnitsLocal) {
+      await deleteUnit(u.id);
+    }
+    await supabase.from("courses").delete().eq("id", courseId);
+    if (selectedCourse === courseId) {
+      setSelectedCourse(null); setSelectedLesson(null); setSelectedVersion(null); setBlocks([]); setLessons([]);
+    }
+    await loadAll();
+  }
+
+  async function renamePackage(pkgId: string) {
+    if (!renamePkgTitle.trim()) return;
+    await supabase.from("curriculum_packages").update({ title: renamePkgTitle.trim() }).eq("id", pkgId);
+    setRenamingPkgId(null); setRenamePkgTitle("");
+    await loadAll();
+  }
+
+  async function renameCourse(courseId: string) {
+    if (!renameCourseTitle.trim()) return;
+    await supabase.from("courses").update({ title: renameCourseTitle.trim() }).eq("id", courseId);
+    setRenamingCourseId(null); setRenameCourseTitle("");
+    await loadAll();
+  }
+
+  async function renameLesson(lessonId: string) {
+    if (!renameLessonTitle.trim()) return;
+    await supabase.from("lessons").update({ title: renameLessonTitle.trim() }).eq("id", lessonId);
+    setRenamingLessonId(null); setRenameLessonTitle("");
+    // Update local state
+    if (selectedLesson?.id === lessonId) {
+      setSelectedLesson({ ...selectedLesson, title: renameLessonTitle.trim() });
+    }
+    if (selectedCourse) loadCourseLessons(selectedCourse);
+  }
     const { data: versions } = await supabase.from("lesson_versions").select("id").eq("lesson_id", lessonId);
     if (versions) {
       for (const v of versions) {
