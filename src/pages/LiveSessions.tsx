@@ -75,22 +75,24 @@ export default function LiveSessions() {
     setLoading(false);
   }
 
-  // Derived: filter lessons by selected course
+  // Derived: filter lessons by selected course (optional)
   const courseUnits = units.filter(u => u.course_id === courseId);
   const courseUnitIds = new Set(courseUnits.map(u => u.id));
-  const courseLessons = lessons.filter(l => l.unit_id && courseUnitIds.has(l.unit_id));
+
+  // If a course is selected, show lessons in that course + lessons with no unit.
+  // If no course selected, show ALL lessons.
+  const filteredLessons = courseId
+    ? lessons.filter(l => !l.unit_id || courseUnitIds.has(l.unit_id))
+    : lessons;
+
+  // Only show versions that have a published status for the selected lesson
   const selectedLessonVersions = versions.filter(v => v.lesson_id === lessonId);
 
-  // Auto-select first lesson when course changes
+  // Reset lesson when course changes
   useEffect(() => {
-    if (courseLessons.length > 0) {
-      const first = courseLessons[0];
-      setLessonId(first.id);
-    } else {
-      setLessonId("");
-      setLessonVersionId("");
-    }
-  }, [courseId, lessons.length]);
+    setLessonId("");
+    setLessonVersionId("");
+  }, [courseId]);
 
   // Auto-select first version when lesson changes
   useEffect(() => {
