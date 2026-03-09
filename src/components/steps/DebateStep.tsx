@@ -23,6 +23,7 @@ export default function DebateStep({ config, body, onComplete, isLive }: Props) 
   function handleSubmit() {
     if (!selectedSide || !argument.trim()) return;
     setSubmitted(true);
+    onComplete({ side: selectedSide, argument });
   }
 
   return (
@@ -74,7 +75,7 @@ export default function DebateStep({ config, body, onComplete, isLive }: Props) 
       )}
 
       {submitted && (
-        <>
+        <div className="space-y-4">
           <div className="rounded-xl border border-border bg-card p-5 space-y-2">
             <div className="flex items-center gap-2">
               <ThumbsUp className="w-4 h-4 text-primary" />
@@ -83,17 +84,13 @@ export default function DebateStep({ config, body, onComplete, isLive }: Props) 
             <p className="text-sm text-muted-foreground italic">"{argument}"</p>
           </div>
 
-          {isLive && (
-            <div className="rounded-xl border border-border bg-secondary/50 p-4 text-center">
-              <p className="text-sm text-muted-foreground">Waiting for class discussion...</p>
-            </div>
-          )}
-
-          <button onClick={() => onComplete({ side: selectedSide!, argument })}
-            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
-            Continue
-          </button>
-        </>
+          <div className="rounded-xl border border-border bg-primary/5 p-4 text-center">
+            <p className="text-sm font-semibold text-foreground">✅ Argument submitted!</p>
+            <p className="text-xs text-muted-foreground">
+              {isLive ? "Waiting for teacher to continue..." : "Great argument!"}
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

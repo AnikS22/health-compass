@@ -27,6 +27,7 @@ export default function GroupChallengeStep({ config, body, onComplete, isLive }:
     if (submissionType === "text" && !response.trim()) return;
     if (submissionType === "choice" && !selectedChoice) return;
     setSubmitted(true);
+    onComplete(submissionType === "text" ? { text: response } : { selected_choice_id: selectedChoice! });
   }
 
   return (
@@ -111,21 +112,13 @@ export default function GroupChallengeStep({ config, body, onComplete, isLive }:
       )}
 
       {submitted && (
-        <>
-          <div className="rounded-xl border border-border bg-primary/5 p-5 text-center space-y-2">
-            <Trophy className="w-8 h-8 text-primary mx-auto" />
-            <p className="text-sm font-semibold text-foreground">Answer submitted!</p>
-            <p className="text-xs text-muted-foreground">
-              {isLive ? "Waiting for teacher to continue..." : "Great teamwork!"}
-            </p>
-          </div>
-          <button onClick={() => onComplete(
-            submissionType === "text" ? { text: response } : { selected_choice_id: selectedChoice! }
-          )}
-            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
-            Continue
-          </button>
-        </>
+        <div className="rounded-xl border border-border bg-primary/5 p-5 text-center space-y-2">
+          <Trophy className="w-8 h-8 text-primary mx-auto" />
+          <p className="text-sm font-semibold text-foreground">Answer submitted!</p>
+          <p className="text-xs text-muted-foreground">
+            {isLive ? "Waiting for teacher to continue..." : "Great teamwork!"}
+          </p>
+        </div>
       )}
     </div>
   );
