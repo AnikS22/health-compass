@@ -110,15 +110,11 @@ export default function LiveSessions() {
     if (!classId || !lessonVersionId || !appUserId) return;
     setCreating(true);
 
-    const { data: orgData } = await supabase
-      .from("users")
-      .select("organization_id")
-      .eq("id", appUserId)
-      .single();
-
-    const orgId = orgData?.organization_id;
+    // Derive org from the selected class (works even if user has no org, e.g. ethics_admin)
+    const selectedClass = classes.find((c) => c.id === classId);
+    const orgId = selectedClass?.organization_id;
     if (!orgId) {
-      console.error("Failed to start session: user has no organization assigned.");
+      console.error("Failed to start session: selected class has no organization.");
       setCreating(false);
       return;
     }
