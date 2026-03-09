@@ -1677,6 +1677,8 @@ export default function ManageCurriculum() {
             <h3 className="text-lg font-bold text-foreground">Confirm Delete</h3>
             <p className="text-sm text-muted-foreground">
               Are you sure you want to delete <span className="font-semibold text-foreground">{confirmDelete.name}</span>?
+              {confirmDelete.type === "package" && " This will also delete all courses, units, lessons, and blocks in this package."}
+              {confirmDelete.type === "course" && " This will also delete all units, lessons, and blocks in this course."}
               {confirmDelete.type === "unit" && " This will also delete all lessons and blocks in this unit."}
               {confirmDelete.type === "lesson" && " This will also delete all versions and blocks."}
               {" "}This cannot be undone.
