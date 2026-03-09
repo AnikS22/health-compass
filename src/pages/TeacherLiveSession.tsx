@@ -494,30 +494,68 @@ export default function TeacherLiveSession() {
               {(step.block_type === "micro_challenge" || (step.block_type as string) === "mcq") && (
                 <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{(config.question as string) ?? ""}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {((config.options as Array<{ id: string; text: string }>) ?? []).map((opt, i) => (
-                      <div key={opt.id} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3 hover:border-primary/30 transition-colors">
-                        <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                          {String.fromCharCode(65 + i)}
-                        </span>
-                        <span className="text-foreground font-medium">{opt.text}</span>
+                  {showResults ? (
+                    <div className="space-y-3">
+                      {getMcqTallies().map((t, i) => {
+                        const maxCount = Math.max(...getMcqTallies().map(x => x.count), 1);
+                        return (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-foreground flex items-center gap-2">
+                                <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{String.fromCharCode(65 + i)}</span>
+                                {t.option}
+                              </span>
+                              <span className="font-bold text-foreground">{t.count}</span>
+                            </div>
+                            <div className="h-8 bg-secondary rounded-xl overflow-hidden">
+                              <div className="h-full bg-primary/80 rounded-xl transition-all duration-700 ease-out flex items-center justify-end pr-3"
+                                style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }}>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        {((config.options as Array<{ id: string; text: string }>) ?? []).map((opt, i) => (
+                          <div key={opt.id} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3 hover:border-primary/30 transition-colors">
+                            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                              {String.fromCharCode(65 + i)}
+                            </span>
+                            <span className="text-foreground font-medium">{opt.text}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 justify-center pt-2">
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                      📱 Students answer on their devices
-                    </span>
-                  </div>
+                      <div className="flex items-center gap-2 justify-center pt-2">
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                          📱 {liveResponses.length} of {participants.length} answered
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
               {step.block_type === "reasoning_response" && (
-                <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-4">
+                <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? ""}</p>
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                    ✍️ Students writing on their devices
-                  </span>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {getTextResponses().map((text, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-sm text-foreground">{text}</p>
+                        </div>
+                      ))}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      ✍️ {liveResponses.length} of {participants.length} writing
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -538,7 +576,7 @@ export default function TeacherLiveSession() {
                   )}
                   <div className="flex items-center gap-2 justify-center pt-2">
                     <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                      👥 Students sharing perspectives
+                      👥 {liveResponses.length} of {participants.length} shared
                     </span>
                   </div>
                 </div>
@@ -547,39 +585,140 @@ export default function TeacherLiveSession() {
               {(step.block_type === "poll" || step.block_type === "multi_select") && (
                 <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{step.body ?? "Vote below"}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(((config.options as string[]) ?? []).map((opt: string, i: number) => (
-                      <div key={i} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3 hover:border-primary/30 transition-colors">
-                        <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                          {String.fromCharCode(65 + i)}
-                        </span>
-                        <span className="text-foreground font-medium">{opt}</span>
+                  {showResults ? (
+                    <div className="space-y-3">
+                      {getPollTallies().map((t, i) => {
+                        const maxCount = Math.max(...getPollTallies().map(x => x.count), 1);
+                        return (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-foreground flex items-center gap-2">
+                                <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{String.fromCharCode(65 + i)}</span>
+                                {t.option}
+                              </span>
+                              <span className="font-bold text-foreground">{t.count}</span>
+                            </div>
+                            <div className="h-8 bg-secondary rounded-xl overflow-hidden">
+                              <div className="h-full bg-primary/80 rounded-xl transition-all duration-700 ease-out"
+                                style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }}>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} vote{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(((config.options as string[]) ?? []).map((opt: string, i: number) => (
+                          <div key={i} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3 hover:border-primary/30 transition-colors">
+                            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                              {String.fromCharCode(65 + i)}
+                            </span>
+                            <span className="text-foreground font-medium">{opt}</span>
+                          </div>
+                        )))}
                       </div>
-                    )))}
-                  </div>
-                  <div className="flex items-center gap-2 justify-center pt-2">
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                      📊 Students voting on their devices
-                    </span>
-                  </div>
+                      <div className="flex items-center gap-2 justify-center pt-2">
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                          📊 {liveResponses.length} of {participants.length} voted
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
               {step.block_type === "short_answer" && (
-                <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-4">
+                <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? ""}</p>
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                    ✍️ Students typing on their devices
-                  </span>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {getTextResponses().map((text, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-sm text-foreground">{text}</p>
+                        </div>
+                      ))}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      ✍️ {liveResponses.length} of {participants.length} typing
+                    </span>
+                  )}
                 </div>
               )}
 
-              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer"].includes(step.block_type) && (
+              {step.block_type === "exit_ticket" && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Exit Ticket"}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {getTextResponses().map((text, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-sm text-foreground">{text}</p>
+                        </div>
+                      ))}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      🎫 {liveResponses.length} of {participants.length} submitted
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {(step.block_type === "debate") && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? ""}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => {
+                        const p = r.response_payload;
+                        return (
+                          <div key={i} className="rounded-xl border border-border bg-card p-4">
+                            {p.position && <span className="text-xs font-bold text-primary uppercase">{String(p.position)}</span>}
+                            <p className="text-sm text-foreground mt-1">{String(p.argument ?? p.text ?? "")}</p>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      ⚖️ {liveResponses.length} of {participants.length} debating
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {(step.block_type === "collaborative_board" || step.block_type === "group_board") && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{step.body ?? "Share your ideas"}</p>
+                  {showResults ? (
+                    <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-sm text-foreground">{String(r.response_payload.text ?? r.response_payload.post ?? "")}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      📝 {liveResponses.length} of {participants.length} posted
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board", "group_board"].includes(step.block_type) && (
                 <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
                   <span className="text-5xl">{getBlockIcon(step.block_type)}</span>
                   <p className="text-lg font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>
                   <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                    📱 Students interact on their devices
+                    📱 {liveResponses.length} of {participants.length} responded
                   </span>
                 </div>
               )}
