@@ -114,6 +114,7 @@ export default function StudentLiveView() {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
+  const [revealedResults, setRevealedResults] = useState<Record<string, unknown> | null>(null);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
