@@ -466,30 +466,96 @@ export default function StudentLiveView() {
                   onComplete={(r) => handleStepComplete(r)}
                 />
               )}
-              {step && ["short_answer", "exit_ticket", "scenario", "dilemma_tree", "debate", "collaborative_board", "group_board", "group_challenge", "peer_review", "drag_drop", "matching", "drawing", "red_team"].includes(step.block_type) && (
-                <div className="space-y-4">
-                  {step.body && <p className="text-lg text-foreground">{step.body}</p>}
-                  <textarea
-                    id={`response-${step.id}`}
-                    placeholder="Type your response…"
-                    rows={4}
-                    className="w-full rounded-xl border-2 border-border bg-card text-foreground px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors resize-none placeholder:text-muted-foreground"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && e.metaKey) {
-                        handleStepComplete({ text: (e.target as HTMLTextAreaElement).value });
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={() => {
-                      const el = document.getElementById(`response-${step.id}`) as HTMLTextAreaElement | null;
-                      handleStepComplete({ text: el?.value || "response" });
-                    }}
-                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
-                  >
-                    Submit
-                  </button>
-                </div>
+              {step?.block_type === "short_answer" && (
+                <ShortAnswerStep
+                  config={step.config as unknown as ShortAnswerConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                />
+              )}
+              {step?.block_type === "exit_ticket" && (
+                <ExitTicketStep
+                  config={step.config as unknown as ExitTicketConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                />
+              )}
+              {step?.block_type === "scenario" && (
+                <ScenarioStep
+                  config={step.config as unknown as ScenarioConfig}
+                  body={step.body}
+                  hints={step.hints}
+                  onComplete={(r) => handleStepComplete(r)}
+                />
+              )}
+              {step?.block_type === "dilemma_tree" && (
+                <DilemmaTreeStep
+                  config={step.config as unknown as DilemmaTreeConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                />
+              )}
+              {step?.block_type === "debate" && (
+                <DebateStep
+                  config={step.config as unknown as DebateConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                  isLive
+                />
+              )}
+              {(step?.block_type === "collaborative_board" || step?.block_type === "group_board") && (
+                <CollaborativeBoardStep
+                  config={step.config as unknown as CollaborativeBoardConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                  isLive
+                />
+              )}
+              {step?.block_type === "group_challenge" && (
+                <GroupChallengeStep
+                  config={step.config as unknown as GroupChallengeConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                  isLive
+                />
+              )}
+              {step?.block_type === "peer_review" && (
+                <PeerReviewStep
+                  config={step.config as unknown as PeerReviewConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                  isLive
+                />
+              )}
+              {step?.block_type === "drag_drop" && (
+                <DragDropStep
+                  config={step.config as unknown as DragDropConfig}
+                  body={step.body}
+                  hints={step.hints}
+                  onComplete={(r) => handleStepComplete(r)}
+                />
+              )}
+              {step?.block_type === "matching" && (
+                <MatchingStep
+                  config={step.config as unknown as MatchingConfig}
+                  body={step.body}
+                  hints={step.hints}
+                  onComplete={(r) => handleStepComplete(r)}
+                />
+              )}
+              {step?.block_type === "drawing" && (
+                <DrawingStep
+                  config={step.config as unknown as DrawingConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                />
+              )}
+              {step?.block_type === "red_team" && (
+                <RedTeamStep
+                  config={step.config as unknown as RedTeamConfig}
+                  body={step.body}
+                  onComplete={(r) => handleStepComplete(r)}
+                />
               )}
             </div>
           )}
