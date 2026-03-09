@@ -753,7 +753,8 @@ export default function ManageCurriculum() {
     const { data: lesson, error } = await supabase.from("lessons").insert({
       title: form.title.trim(), unit_id: form.unit_id,
       grade_band: form.grade_band || null, difficulty: form.difficulty || null,
-      estimated_minutes: form.estimated_minutes ? parseInt(form.estimated_minutes) : null
+      estimated_minutes: form.estimated_minutes ? parseInt(form.estimated_minutes) : null,
+      audience_type: form.audience_type || "both"
     }).select("id").single();
     if (error) { console.error("Create lesson error:", error); alert(`Failed to create lesson: ${error.message}`); return; }
     if (lesson) {
