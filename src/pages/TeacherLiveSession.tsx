@@ -756,6 +756,20 @@ export default function TeacherLiveSession() {
             <button onClick={() => startTimer(60)} disabled={timerRunning} className="w-full py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-muted transition-colors disabled:opacity-40">
               <Timer className="w-4 h-4" /> 60s Timer
             </button>
+            {isInteractive && (
+              <button
+                onClick={handleRevealResults}
+                disabled={showResults || liveResponses.length === 0}
+                className={`w-full py-2.5 rounded-xl border text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                  showResults
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-card text-foreground hover:bg-muted"
+                } disabled:opacity-40`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                {showResults ? "Results Shown" : `Show Results (${liveResponses.length})`}
+              </button>
+            )}
           </div>
 
           {/* Step list */}
