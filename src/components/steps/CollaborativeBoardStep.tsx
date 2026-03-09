@@ -102,24 +102,20 @@ export default function CollaborativeBoardStep({ config, body, onComplete, isLiv
         </div>
       )}
 
-      {isLive && submitted && (
-        <div className="rounded-xl border border-border bg-secondary/50 p-4 text-center">
-          <p className="text-sm text-muted-foreground">Waiting for classmates to post...</p>
-        </div>
-      )}
-
       {!submitted && myPosts.length > 0 && (
-        <button onClick={() => setSubmitted(true)}
+        <button onClick={() => { setSubmitted(true); onComplete({ posts: myPosts.map(p => p.text) }); }}
           className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
           Submit Posts
         </button>
       )}
 
       {submitted && (
-        <button onClick={() => onComplete({ posts: myPosts.map(p => p.text) })}
-          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
-          Continue
-        </button>
+        <div className="rounded-xl border border-border bg-primary/5 p-5 text-center space-y-2">
+          <p className="text-sm font-semibold text-foreground">✅ Posts submitted!</p>
+          <p className="text-xs text-muted-foreground">
+            {isLive ? "Waiting for teacher to continue..." : "Great contributions!"}
+          </p>
+        </div>
       )}
     </div>
   );
