@@ -36,6 +36,7 @@ export default function LiveSessions() {
   const [lessonId, setLessonId] = useState("");
   const [lessonVersionId, setLessonVersionId] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
