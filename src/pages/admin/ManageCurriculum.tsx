@@ -816,7 +816,12 @@ export default function ManageCurriculum() {
           if (existingUnit) {
             unitId = existingUnit.id;
           } else {
-            const seqNo = (typeof lessonData.unit === "object" && lessonData.unit.sequence_no) ?? (units.filter(u => u.course_id === selectedCourse).length + 1);
+            const rawSeq = typeof lessonData.unit === "object" && lessonData.unit.sequence_no != null
+              ? Number(lessonData.unit.sequence_no)
+              : null;
+            const seqNo = Number.isInteger(rawSeq) && rawSeq! > 0
+              ? rawSeq!
+              : units.filter(u => u.course_id === selectedCourse).length + 1;
             const { data: newUnit, error: unitErr } = await supabase.from("units").insert({
               course_id: selectedCourse, title: unitTitle.trim(), sequence_no: seqNo,
             }).select("id, title, course_id, sequence_no, created_at").single();
