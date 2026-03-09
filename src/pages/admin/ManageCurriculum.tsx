@@ -1012,6 +1012,7 @@ export default function ManageCurriculum() {
     }
     if (selectedCourse) loadCourseLessons(selectedCourse);
   }
+  async function deleteLesson(lessonId: string) {
     const { data: versions } = await supabase.from("lesson_versions").select("id").eq("lesson_id", lessonId);
     if (versions) {
       for (const v of versions) {
