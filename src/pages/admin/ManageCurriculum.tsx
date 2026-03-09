@@ -1507,8 +1507,25 @@ export default function ManageCurriculum() {
             <div className="space-y-4">
               <div className="bg-card border border-border rounded-xl p-4">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="font-bold text-foreground">{selectedLesson.title}</h2>
+                  <div className="flex-1">
+                    {renamingLessonId === selectedLesson.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <input value={renameLessonTitle} onChange={e => setRenameLessonTitle(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter") renameLesson(selectedLesson.id); if (e.key === "Escape") setRenamingLessonId(null); }}
+                          autoFocus
+                          className="flex-1 px-2 py-1 bg-background border border-input rounded-lg text-sm text-foreground font-bold focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                        <button onClick={() => renameLesson(selectedLesson.id)} className="px-2 py-1 bg-primary text-primary-foreground rounded-lg text-xs font-bold">Save</button>
+                        <button onClick={() => setRenamingLessonId(null)} className="px-2 py-1 bg-secondary text-foreground rounded-lg text-xs font-bold">Cancel</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <h2 className="font-bold text-foreground">{selectedLesson.title}</h2>
+                        <button onClick={() => { setRenamingLessonId(selectedLesson.id); setRenameLessonTitle(selectedLesson.title); }}
+                          className="p-1 rounded text-muted-foreground hover:text-primary transition-colors" title="Rename lesson">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                     <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
                       {selectedLesson.grade_band && <span>Grade: {selectedLesson.grade_band}</span>}
                       {selectedLesson.difficulty && <span>{selectedLesson.difficulty}</span>}
