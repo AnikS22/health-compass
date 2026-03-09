@@ -14,18 +14,26 @@ type LiveSession = {
 };
 
 type ClassRow = { id: string; name: string };
-type LessonVersionRow = { id: string; version_label: string; lesson_id: string };
+type LessonRow = { id: string; title: string; unit_id: string | null };
+type VersionRow = { id: string; version_label: string; lesson_id: string; publish_status: string };
+type UnitRow = { id: string; title: string; course_id: string };
+type CourseRow = { id: string; title: string };
 
 export default function LiveSessions() {
   const navigate = useNavigate();
   const { appUserId } = useAuth();
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [classes, setClasses] = useState<ClassRow[]>([]);
-  const [lessonVersions, setLessonVersions] = useState<LessonVersionRow[]>([]);
+  const [courses, setCourses] = useState<CourseRow[]>([]);
+  const [units, setUnits] = useState<UnitRow[]>([]);
+  const [lessons, setLessons] = useState<LessonRow[]>([]);
+  const [versions, setVersions] = useState<VersionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [classId, setClassId] = useState("");
+  const [courseId, setCourseId] = useState("");
+  const [lessonId, setLessonId] = useState("");
   const [lessonVersionId, setLessonVersionId] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -34,28 +42,64 @@ export default function LiveSessions() {
   }, []);
 
   async function loadData() {
-    const [sessRes, classRes, lvRes] = await Promise.all([
+    const [sessRes, classRes, courseRes, unitRes, lessonRes, versionRes] = await Promise.all([
       supabase
         .from("live_sessions")
         .select("id, session_code, started_at, ended_at, class_id, lesson_version_id")
         .order("started_at", { ascending: false })
         .limit(20),
       supabase.from("classes").select("id, name").order("created_at", { ascending: false }),
+      supabase.from("courses").select("id, title").order("title"),
+      supabase.from("units").select("id, title, course_id").order("sequence_no"),
+      supabase.from("lessons").select("id, title, unit_id").order("title"),
       supabase
         .from("lesson_versions")
-        .select("id, version_label, lesson_id")
+        .select("id, version_label, lesson_id, publish_status")
         .eq("publish_status", "published")
         .order("created_at", { ascending: false }),
     ]);
     setSessions((sessRes.data as LiveSession[]) ?? []);
     const cls = (classRes.data as ClassRow[]) ?? [];
-    const lvs = (lvRes.data as LessonVersionRow[]) ?? [];
+    const crs = (courseRes.data as CourseRow[]) ?? [];
+    const uts = (unitRes.data as UnitRow[]) ?? [];
+    const lss = (lessonRes.data as LessonRow[]) ?? [];
+    const vrs = (versionRes.data as VersionRow[]) ?? [];
     setClasses(cls);
-    setLessonVersions(lvs);
+    setCourses(crs);
+    setUnits(uts);
+    setLessons(lss);
+    setVersions(vrs);
     if (cls.length > 0 && !classId) setClassId(cls[0].id);
-    if (lvs.length > 0 && !lessonVersionId) setLessonVersionId(lvs[0].id);
+    if (crs.length > 0 && !courseId) setCourseId(crs[0].id);
     setLoading(false);
   }
+
+  // Derived: filter lessons by selected course
+  const courseUnits = units.filter(u => u.course_id === courseId);
+  const courseUnitIds = new Set(courseUnits.map(u => u.id));
+  const courseLessons = lessons.filter(l => l.unit_id && courseUnitIds.has(l.unit_id));
+  const selectedLessonVersions = versions.filter(v => v.lesson_id === lessonId);
+
+  // Auto-select first lesson when course changes
+  useEffect(() => {
+    if (courseLessons.length > 0) {
+      const first = courseLessons[0];
+      setLessonId(first.id);
+    } else {
+      setLessonId("");
+      setLessonVersionId("");
+    }
+  }, [courseId, lessons.length]);
+
+  // Auto-select first version when lesson changes
+  useEffect(() => {
+    const lvs = versions.filter(v => v.lesson_id === lessonId);
+    if (lvs.length > 0) {
+      setLessonVersionId(lvs[0].id);
+    } else {
+      setLessonVersionId("");
+    }
+  }, [lessonId, versions.length]);
 
   function generateCode() {
     return "ETH-" + Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -162,23 +206,63 @@ export default function LiveSessions() {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Course</label>
+              <select
+                value={courseId}
+                onChange={(e) => setCourseId(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
+              >
+                <option value="">Select a course</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-semibold text-foreground mb-1.5">Lesson</label>
               <select
-                value={lessonVersionId}
-                onChange={(e) => setLessonVersionId(e.target.value)}
+                value={lessonId}
+                onChange={(e) => setLessonId(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
               >
                 <option value="">Select a lesson</option>
-                {lessonVersions.map((lv) => (
-                  <option key={lv.id} value={lv.id}>{lv.version_label}</option>
-                ))}
+                {courseLessons.map((l) => {
+                  const unit = courseUnits.find(u => u.id === l.unit_id);
+                  return (
+                    <option key={l.id} value={l.id}>
+                      {unit ? `${unit.title} → ` : ""}{l.title}
+                    </option>
+                  );
+                })}
               </select>
+              {courseLessons.length === 0 && courseId && (
+                <p className="text-xs text-muted-foreground mt-1">No lessons found in this course.</p>
+              )}
             </div>
+            {selectedLessonVersions.length > 1 && (
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">Version</label>
+                <select
+                  value={lessonVersionId}
+                  onChange={(e) => setLessonVersionId(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
+                >
+                  {selectedLessonVersions.map((v) => (
+                    <option key={v.id} value={v.id}>{v.version_label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {lessonId && selectedLessonVersions.length === 0 && (
+              <p className="text-xs text-destructive">No published versions for this lesson. Publish a version first.</p>
+            )}
             <div className="flex gap-2">
               <button
                 type="submit"
-                disabled={creating}
+                disabled={creating || !lessonVersionId}
                 className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {creating ? "Starting…" : "Start Session"}
