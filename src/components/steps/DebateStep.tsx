@@ -23,6 +23,7 @@ export default function DebateStep({ config, body, onComplete, isLive }: Props) 
   function handleSubmit() {
     if (!selectedSide || !argument.trim()) return;
     setSubmitted(true);
+    onComplete({ side: selectedSide, argument });
   }
 
   return (

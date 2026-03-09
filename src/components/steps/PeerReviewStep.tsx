@@ -122,17 +122,13 @@ export default function PeerReviewStep({ config, body, onComplete, isLive }: Pro
 
       {/* Phase 3: Done */}
       {phase === "done" && (
-        <>
-          <div className="rounded-xl border border-border bg-primary/5 p-5 text-center space-y-2">
-            <Star className="w-8 h-8 text-primary mx-auto" fill="currentColor" />
-            <p className="text-sm font-semibold text-foreground">Review submitted!</p>
-            <p className="text-xs text-muted-foreground">Great job giving feedback to your classmates.</p>
-          </div>
-          <button onClick={() => onComplete({ text: ownResponse, rating: rating || undefined })}
-            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
-            Continue
-          </button>
-        </>
+        <div className="rounded-xl border border-border bg-primary/5 p-5 text-center space-y-2">
+          <Star className="w-8 h-8 text-primary mx-auto" fill="currentColor" />
+          <p className="text-sm font-semibold text-foreground">Review submitted!</p>
+          <p className="text-xs text-muted-foreground">
+            {isLive ? "Waiting for teacher to continue..." : "Great job giving feedback to your classmates."}
+          </p>
+        </div>
       )}
     </div>
   );
