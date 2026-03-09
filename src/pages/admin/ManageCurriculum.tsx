@@ -695,7 +695,7 @@ export default function ManageCurriculum() {
     if (courseUnits.length === 0) { setLessons([]); return; }
     const unitIds = courseUnits.map(u => u.id);
     const { data: lessonData } = await supabase
-      .from("lessons").select("id, title, grade_band, difficulty, estimated_minutes, unit_id")
+      .from("lessons").select("id, title, grade_band, difficulty, estimated_minutes, unit_id, audience_type")
       .in("unit_id", unitIds).order("title");
     if (!lessonData) { setLessons([]); return; }
     const lessonIds = lessonData.map(l => l.id);
