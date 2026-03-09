@@ -833,6 +833,37 @@ export default function ManageCurriculum() {
     }
   }
 
+  // ── Export lesson as JSON ──
+  function exportLesson() {
+    if (!selectedLesson || !selectedVersion) return;
+    const versionInfo = selectedLesson.versions.find(v => v.id === selectedVersion);
+    const exportData = {
+      title: selectedLesson.title,
+      grade_band: selectedLesson.grade_band,
+      difficulty: (selectedLesson as any).difficulty || null,
+      estimated_minutes: selectedLesson.estimated_minutes,
+      version_label: versionInfo?.version_label || "v1",
+      publish_status: "draft",
+      blocks: blocks.map(b => ({
+        block_type: b.block_type,
+        title: b.title,
+        body: b.body,
+        config: b.config,
+        hints: b.hints,
+        is_gate: b.is_gate,
+        mastery_rules: b.mastery_rules,
+        sequence_no: b.sequence_no,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${selectedLesson.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function deleteBlock(blockId: string) {
     if (!selectedVersion) return;
     await supabase.from("lesson_blocks").delete().eq("id", blockId);
