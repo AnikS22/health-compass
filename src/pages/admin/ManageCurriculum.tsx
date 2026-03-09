@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   BookOpen, ChevronRight, Plus, Trash2, Save, X, Play,
   Layers, FileText, Video, HelpCircle, MessageSquare,
-  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle
+  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle, Upload
 } from "lucide-react";
 
 type Pkg = { id: string; package_key: string; title: string };
@@ -655,6 +655,8 @@ export default function ManageCurriculum() {
   const [showCreateLesson, setShowCreateLesson] = useState(false);
   const [showCreateBlock, setShowCreateBlock] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [importing, setImporting] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const loadAll = useCallback(async () => {
     const [pkgRes, courseRes, unitRes] = await Promise.all([
@@ -761,6 +763,105 @@ export default function ManageCurriculum() {
     });
     if (error) { console.error("Create block error:", error); alert(`Failed to create block: ${error.message}`); return; }
     setShowCreateBlock(false); setForm({}); loadBlocks(selectedVersion);
+  }
+
+  // ── Import lesson from JSON file ──
+  async function handleImportLesson(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !selectedCourse) return;
+    e.target.value = "";
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.title || typeof data.title !== "string") {
+        alert("Invalid JSON: missing 'title' field."); setImporting(false); return;
+      }
+      let unitId = data.unit_id;
+      if (!unitId) {
+        const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
+        if (courseUnitsLocal.length === 0) {
+          alert("No units in this course. Please create a unit first."); setImporting(false); return;
+        }
+        if (courseUnitsLocal.length === 1) {
+          unitId = courseUnitsLocal[0].id;
+        } else {
+          const unitChoice = prompt(
+            `Which unit? Enter the number:\n${courseUnitsLocal.map((u, i) => `${i + 1}. ${u.title}`).join("\n")}`
+          );
+          if (!unitChoice) { setImporting(false); return; }
+          const idx = parseInt(unitChoice) - 1;
+          if (idx < 0 || idx >= courseUnitsLocal.length) { alert("Invalid selection."); setImporting(false); return; }
+          unitId = courseUnitsLocal[idx].id;
+        }
+      }
+      const { data: lesson, error: lessonErr } = await supabase.from("lessons").insert({
+        title: data.title.trim(), unit_id: unitId,
+        grade_band: data.grade_band || null, difficulty: data.difficulty || null,
+        estimated_minutes: data.estimated_minutes || null,
+        learning_objectives: data.learning_objectives || [],
+        sensitive_topic_flags: data.sensitive_topic_flags || [],
+        required_materials: data.required_materials || [],
+      }).select("id").single();
+      if (lessonErr || !lesson) {
+        alert(`Failed to create lesson: ${lessonErr?.message || "Unknown error"}`); setImporting(false); return;
+      }
+      const { data: version, error: versionErr } = await supabase.from("lesson_versions").insert({
+        lesson_id: lesson.id, version_label: data.version_label || "v1", publish_status: data.publish_status || "draft",
+      }).select("id").single();
+      if (versionErr || !version) {
+        alert(`Lesson created but version failed: ${versionErr?.message || "Unknown error"}`); setImporting(false); return;
+      }
+      const blocksData = Array.isArray(data.blocks) ? data.blocks : [];
+      if (blocksData.length > 0) {
+        const blockInserts = blocksData.map((b: any, i: number) => ({
+          lesson_version_id: version.id, block_type: b.block_type,
+          title: b.title || null, body: b.body || null, config: b.config || {},
+          hints: b.hints || [], is_gate: b.is_gate || false, mastery_rules: b.mastery_rules || {},
+          sequence_no: b.sequence_no ?? (i + 1),
+        }));
+        const { error: blocksErr } = await supabase.from("lesson_blocks").insert(blockInserts);
+        if (blocksErr) alert(`Lesson & version created, but blocks failed: ${blocksErr.message}`);
+      }
+      alert(`✅ Imported "${data.title}" with ${blocksData.length} blocks!`);
+      await loadAll();
+      loadCourseLessons(selectedCourse);
+    } catch (err: any) {
+      alert(`Import failed: ${err.message || "Invalid JSON file"}`);
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  // ── Export lesson as JSON ──
+  function exportLesson() {
+    if (!selectedLesson || !selectedVersion) return;
+    const versionInfo = selectedLesson.versions.find(v => v.id === selectedVersion);
+    const exportData = {
+      title: selectedLesson.title,
+      grade_band: selectedLesson.grade_band,
+      difficulty: (selectedLesson as any).difficulty || null,
+      estimated_minutes: selectedLesson.estimated_minutes,
+      version_label: versionInfo?.version_label || "v1",
+      publish_status: "draft",
+      blocks: blocks.map(b => ({
+        block_type: b.block_type,
+        title: b.title,
+        body: b.body,
+        config: b.config,
+        hints: b.hints,
+        is_gate: b.is_gate,
+        mastery_rules: b.mastery_rules,
+        sequence_no: b.sequence_no,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${selectedLesson.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function deleteBlock(blockId: string) {
@@ -1081,6 +1182,11 @@ export default function ManageCurriculum() {
                     className="flex items-center gap-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90">
                     <Plus className="w-3 h-3" /> Lesson
                   </button>
+                  <button onClick={() => importFileRef.current?.click()} disabled={importing}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-secondary text-foreground rounded-lg text-xs font-bold hover:bg-secondary/80 disabled:opacity-50">
+                    {importing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />} Import JSON
+                  </button>
+                  <input ref={importFileRef} type="file" accept=".json,application/json" onChange={handleImportLesson} className="hidden" />
                 </div>
               </div>
 
@@ -1216,6 +1322,10 @@ export default function ManageCurriculum() {
                     <button onClick={previewLesson}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-secondary text-foreground hover:bg-secondary/80 transition-colors">
                       <Eye className="w-3.5 h-3.5" /> Preview
+                    </button>
+                    <button onClick={exportLesson}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-secondary text-foreground hover:bg-secondary/80 transition-colors">
+                      <Upload className="w-3.5 h-3.5 rotate-180" /> Export
                     </button>
                     {selectedLesson.versions.map(v => (
                       <button key={v.id} onClick={() => togglePublish(v.id, v.publish_status)}
