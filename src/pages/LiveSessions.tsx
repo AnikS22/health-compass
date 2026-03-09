@@ -221,11 +221,10 @@ export default function LiveSessions() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Course</label>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Course (optional filter)</label>
               <select
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
-                required
                 className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
               >
                 <option value="">Select a course</option>
