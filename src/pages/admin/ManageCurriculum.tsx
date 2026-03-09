@@ -1323,6 +1323,10 @@ export default function ManageCurriculum() {
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-secondary text-foreground hover:bg-secondary/80 transition-colors">
                       <Eye className="w-3.5 h-3.5" /> Preview
                     </button>
+                    <button onClick={exportLesson}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-secondary text-foreground hover:bg-secondary/80 transition-colors">
+                      <Upload className="w-3.5 h-3.5 rotate-180" /> Export
+                    </button>
                     {selectedLesson.versions.map(v => (
                       <button key={v.id} onClick={() => togglePublish(v.id, v.publish_status)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${v.publish_status === "published" ? "bg-green-500/10 text-green-600 hover:bg-green-500/20" : "bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20"}`}>
