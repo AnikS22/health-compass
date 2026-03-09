@@ -13,7 +13,7 @@ type LiveSession = {
   lesson_version_id: string;
 };
 
-type ClassRow = { id: string; name: string };
+type ClassRow = { id: string; name: string; organization_id: string };
 type LessonRow = { id: string; title: string; unit_id: string | null };
 type VersionRow = { id: string; version_label: string; lesson_id: string; publish_status: string };
 type UnitRow = { id: string; title: string; course_id: string };
@@ -36,6 +36,7 @@ export default function LiveSessions() {
   const [lessonId, setLessonId] = useState("");
   const [lessonVersionId, setLessonVersionId] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -48,7 +49,7 @@ export default function LiveSessions() {
         .select("id, session_code, started_at, ended_at, class_id, lesson_version_id")
         .order("started_at", { ascending: false })
         .limit(20),
-      supabase.from("classes").select("id, name").order("created_at", { ascending: false }),
+      supabase.from("classes").select("id, name, organization_id").order("created_at", { ascending: false }),
       supabase.from("courses").select("id, title").order("title"),
       supabase.from("units").select("id, title, course_id").order("sequence_no"),
       supabase.from("lessons").select("id, title, unit_id").order("title"),
@@ -107,18 +108,18 @@ export default function LiveSessions() {
 
   async function startSession(e: React.FormEvent) {
     e.preventDefault();
-    if (!classId || !lessonVersionId || !appUserId) return;
+    setErrorMsg(null);
+    if (!classId || !lessonVersionId || !appUserId) {
+      setErrorMsg("Please select a class and a published lesson version.");
+      return;
+    }
     setCreating(true);
 
-    const { data: orgData } = await supabase
-      .from("users")
-      .select("organization_id")
-      .eq("id", appUserId)
-      .single();
-
-    const orgId = orgData?.organization_id;
+    // Derive org from the selected class (works even if user has no org, e.g. ethics_admin)
+    const selectedClass = classes.find((c) => c.id === classId);
+    const orgId = selectedClass?.organization_id;
     if (!orgId) {
-      console.error("Failed to start session: user has no organization assigned.");
+      setErrorMsg("Selected class has no organization. Cannot start session.");
       setCreating(false);
       return;
     }
@@ -133,7 +134,7 @@ export default function LiveSessions() {
     });
 
     if (error) {
-      console.error("Failed to start session:", error.message);
+      setErrorMsg(`Failed to start session: ${error.message}`);
     } else {
       setShowCreate(false);
       await loadData();
@@ -197,6 +198,11 @@ export default function LiveSessions() {
       {showCreate && (
         <div className="bg-card rounded-2xl border border-primary/30 p-6 shadow-lg">
           <h2 className="text-lg font-bold text-foreground mb-4">Start a New Live Session</h2>
+          {errorMsg && (
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-sm text-destructive font-medium">
+              {errorMsg}
+            </div>
+          )}
           <form onSubmit={startSession} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-foreground mb-1.5">Class</label>
