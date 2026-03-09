@@ -242,8 +242,8 @@ export default function LiveSessions() {
                 className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
               >
                 <option value="">Select a lesson</option>
-                {courseLessons.map((l) => {
-                  const unit = courseUnits.find(u => u.id === l.unit_id);
+                {filteredLessons.map((l: LessonRow) => {
+                  const unit = units.find(u => u.id === l.unit_id);
                   return (
                     <option key={l.id} value={l.id}>
                       {unit ? `${unit.title} → ` : ""}{l.title}
@@ -251,8 +251,8 @@ export default function LiveSessions() {
                   );
                 })}
               </select>
-              {courseLessons.length === 0 && courseId && (
-                <p className="text-xs text-muted-foreground mt-1">No lessons found in this course.</p>
+              {filteredLessons.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">No lessons found{courseId ? " in this course" : ""}.</p>
               )}
             </div>
             <div>
