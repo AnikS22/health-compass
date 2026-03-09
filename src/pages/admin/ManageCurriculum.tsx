@@ -13,6 +13,7 @@ type Unit = { id: string; title: string; course_id: string; sequence_no: number 
 type Lesson = {
   id: string; title: string; grade_band: string | null; difficulty: string | null;
   estimated_minutes: number | null; unit_id: string | null;
+  audience_type: "school" | "independent" | "both";
   versions: { id: string; version_label: string; publish_status: string }[];
 };
 type Block = {
@@ -694,7 +695,7 @@ export default function ManageCurriculum() {
     if (courseUnits.length === 0) { setLessons([]); return; }
     const unitIds = courseUnits.map(u => u.id);
     const { data: lessonData } = await supabase
-      .from("lessons").select("id, title, grade_band, difficulty, estimated_minutes, unit_id")
+      .from("lessons").select("id, title, grade_band, difficulty, estimated_minutes, unit_id, audience_type")
       .in("unit_id", unitIds).order("title");
     if (!lessonData) { setLessons([]); return; }
     const lessonIds = lessonData.map(l => l.id);
@@ -752,7 +753,8 @@ export default function ManageCurriculum() {
     const { data: lesson, error } = await supabase.from("lessons").insert({
       title: form.title.trim(), unit_id: form.unit_id,
       grade_band: form.grade_band || null, difficulty: form.difficulty || null,
-      estimated_minutes: form.estimated_minutes ? parseInt(form.estimated_minutes) : null
+      estimated_minutes: form.estimated_minutes ? parseInt(form.estimated_minutes) : null,
+      audience_type: form.audience_type || "both"
     }).select("id").single();
     if (error) { console.error("Create lesson error:", error); alert(`Failed to create lesson: ${error.message}`); return; }
     if (lesson) {
@@ -1400,6 +1402,15 @@ export default function ManageCurriculum() {
                   </div>
                   <input placeholder="Estimated minutes" type="number" value={form.estimated_minutes || ""} onChange={e => setForm({ ...form, estimated_minutes: e.target.value })}
                     className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-muted-foreground self-center">Audience:</span>
+                    {(["both", "school", "independent"] as const).map(at => (
+                      <button key={at} type="button" onClick={() => setForm({ ...form, audience_type: at })}
+                        className={`px-2 py-1 rounded text-xs font-bold capitalize ${(form.audience_type || "both") === at ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+                        {at}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={createLesson} className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold">Create</button>
                     <button onClick={() => setShowCreateLesson(false)} className="px-3 py-1.5 bg-secondary text-foreground rounded-lg text-xs font-bold">Cancel</button>
@@ -1460,7 +1471,12 @@ export default function ManageCurriculum() {
                               <button onClick={() => { setSelectedLesson(l); if (l.versions.length > 0) loadBlocks(l.versions[0].id); }}
                                 className="flex-1 text-left">
                                 <span className="text-sm font-medium text-foreground">{l.title}</span>
-                                <div className="flex gap-2 mt-0.5">
+                                <div className="flex gap-2 mt-0.5 flex-wrap">
+                                  {l.audience_type && l.audience_type !== "both" && (
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${l.audience_type === "school" ? "bg-blue-500/10 text-blue-600" : "bg-purple-500/10 text-purple-600"}`}>
+                                      {l.audience_type}
+                                    </span>
+                                  )}
                                   {l.versions.map(v => (
                                     <span key={v.id} className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${v.publish_status === "published" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}>
                                       {v.version_label} · {v.publish_status}
@@ -1526,10 +1542,24 @@ export default function ManageCurriculum() {
                         </button>
                       </div>
                     )}
-                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground items-center">
                       {selectedLesson.grade_band && <span>Grade: {selectedLesson.grade_band}</span>}
                       {selectedLesson.difficulty && <span>{selectedLesson.difficulty}</span>}
                       {selectedLesson.estimated_minutes && <span>{selectedLesson.estimated_minutes} min</span>}
+                      <select
+                        value={selectedLesson.audience_type || "both"}
+                        onChange={async (e) => {
+                          const val = e.target.value as "school" | "independent" | "both";
+                          await supabase.from("lessons").update({ audience_type: val }).eq("id", selectedLesson.id);
+                          setSelectedLesson({ ...selectedLesson, audience_type: val });
+                          if (selectedCourse) loadCourseLessons(selectedCourse);
+                        }}
+                        className="px-2 py-0.5 bg-secondary border border-border rounded-lg text-xs text-foreground font-medium"
+                      >
+                        <option value="both">Both audiences</option>
+                        <option value="school">School only</option>
+                        <option value="independent">Independent only</option>
+                      </select>
                     </div>
                   </div>
                   <div className="flex gap-1.5">
