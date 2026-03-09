@@ -37,7 +37,7 @@ export default function SelfPacedCurriculum() {
     const [courseRes, unitRes, lessonRes, versionRes] = await Promise.all([
       supabase.from("courses").select("id, title, grade_band").order("created_at"),
       supabase.from("units").select("id, course_id, title, sequence_no").order("sequence_no"),
-      supabase.from("lessons").select("id, unit_id, title, estimated_minutes"),
+      supabase.from("lessons").select("id, unit_id, title, estimated_minutes, audience_type").in("audience_type", ["independent", "both"]),
       supabase.from("lesson_versions").select("id, lesson_id, version_label, publish_status").eq("publish_status", "published"),
     ]);
     setCourses((courseRes.data ?? []) as CourseRow[]);
