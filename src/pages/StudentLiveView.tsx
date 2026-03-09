@@ -157,8 +157,11 @@ export default function StudentLiveView() {
       case "goto_block":
         if (typeof evt.step_index === "number") {
           setActiveIndex(evt.step_index);
-          setLocked(false); setSubmitted(false);
+          setLocked(false); setSubmitted(false); setRevealedResults(null);
         }
+        break;
+      case "reveal_results":
+        setRevealedResults(evt as Record<string, unknown>);
         break;
       case "lock":
         setLocked(true);
