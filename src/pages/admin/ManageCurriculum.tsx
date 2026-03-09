@@ -765,6 +765,74 @@ export default function ManageCurriculum() {
     setShowCreateBlock(false); setForm({}); loadBlocks(selectedVersion);
   }
 
+  // ── Import lesson from JSON file ──
+  async function handleImportLesson(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !selectedCourse) return;
+    e.target.value = "";
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.title || typeof data.title !== "string") {
+        alert("Invalid JSON: missing 'title' field."); setImporting(false); return;
+      }
+      let unitId = data.unit_id;
+      if (!unitId) {
+        const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
+        if (courseUnitsLocal.length === 0) {
+          alert("No units in this course. Please create a unit first."); setImporting(false); return;
+        }
+        if (courseUnitsLocal.length === 1) {
+          unitId = courseUnitsLocal[0].id;
+        } else {
+          const unitChoice = prompt(
+            `Which unit? Enter the number:\n${courseUnitsLocal.map((u, i) => `${i + 1}. ${u.title}`).join("\n")}`
+          );
+          if (!unitChoice) { setImporting(false); return; }
+          const idx = parseInt(unitChoice) - 1;
+          if (idx < 0 || idx >= courseUnitsLocal.length) { alert("Invalid selection."); setImporting(false); return; }
+          unitId = courseUnitsLocal[idx].id;
+        }
+      }
+      const { data: lesson, error: lessonErr } = await supabase.from("lessons").insert({
+        title: data.title.trim(), unit_id: unitId,
+        grade_band: data.grade_band || null, difficulty: data.difficulty || null,
+        estimated_minutes: data.estimated_minutes || null,
+        learning_objectives: data.learning_objectives || [],
+        sensitive_topic_flags: data.sensitive_topic_flags || [],
+        required_materials: data.required_materials || [],
+      }).select("id").single();
+      if (lessonErr || !lesson) {
+        alert(`Failed to create lesson: ${lessonErr?.message || "Unknown error"}`); setImporting(false); return;
+      }
+      const { data: version, error: versionErr } = await supabase.from("lesson_versions").insert({
+        lesson_id: lesson.id, version_label: data.version_label || "v1", publish_status: data.publish_status || "draft",
+      }).select("id").single();
+      if (versionErr || !version) {
+        alert(`Lesson created but version failed: ${versionErr?.message || "Unknown error"}`); setImporting(false); return;
+      }
+      const blocksData = Array.isArray(data.blocks) ? data.blocks : [];
+      if (blocksData.length > 0) {
+        const blockInserts = blocksData.map((b: any, i: number) => ({
+          lesson_version_id: version.id, block_type: b.block_type,
+          title: b.title || null, body: b.body || null, config: b.config || {},
+          hints: b.hints || [], is_gate: b.is_gate || false, mastery_rules: b.mastery_rules || {},
+          sequence_no: b.sequence_no ?? (i + 1),
+        }));
+        const { error: blocksErr } = await supabase.from("lesson_blocks").insert(blockInserts);
+        if (blocksErr) alert(`Lesson & version created, but blocks failed: ${blocksErr.message}`);
+      }
+      alert(`✅ Imported "${data.title}" with ${blocksData.length} blocks!`);
+      await loadAll();
+      loadCourseLessons(selectedCourse);
+    } catch (err: any) {
+      alert(`Import failed: ${err.message || "Invalid JSON file"}`);
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function deleteBlock(blockId: string) {
     if (!selectedVersion) return;
     await supabase.from("lesson_blocks").delete().eq("id", blockId);
