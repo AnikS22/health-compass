@@ -254,24 +254,24 @@ export default function LiveSessions() {
                 <p className="text-xs text-muted-foreground mt-1">No lessons found in this course.</p>
               )}
             </div>
-            {selectedLessonVersions.length > 1 && (
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">Version</label>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Lesson Version</label>
+              {lessonId && selectedLessonVersions.length === 0 ? (
+                <p className="text-xs text-destructive">No published versions for this lesson. Publish a version first.</p>
+              ) : (
                 <select
                   value={lessonVersionId}
                   onChange={(e) => setLessonVersionId(e.target.value)}
                   required
                   className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
                 >
+                  <option value="">Select a version</option>
                   {selectedLessonVersions.map((v) => (
                     <option key={v.id} value={v.id}>{v.version_label}</option>
                   ))}
                 </select>
-              </div>
-            )}
-            {lessonId && selectedLessonVersions.length === 0 && (
-              <p className="text-xs text-destructive">No published versions for this lesson. Publish a version first.</p>
-            )}
+              )}
+            </div>
             <div className="flex gap-2">
               <button
                 type="submit"
