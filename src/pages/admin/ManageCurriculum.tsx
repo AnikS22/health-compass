@@ -1537,10 +1537,24 @@ export default function ManageCurriculum() {
                         </button>
                       </div>
                     )}
-                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground items-center">
                       {selectedLesson.grade_band && <span>Grade: {selectedLesson.grade_band}</span>}
                       {selectedLesson.difficulty && <span>{selectedLesson.difficulty}</span>}
                       {selectedLesson.estimated_minutes && <span>{selectedLesson.estimated_minutes} min</span>}
+                      <select
+                        value={selectedLesson.audience_type || "both"}
+                        onChange={async (e) => {
+                          const val = e.target.value as "school" | "independent" | "both";
+                          await supabase.from("lessons").update({ audience_type: val }).eq("id", selectedLesson.id);
+                          setSelectedLesson({ ...selectedLesson, audience_type: val });
+                          if (selectedCourse) loadCourseLessons(selectedCourse);
+                        }}
+                        className="px-2 py-0.5 bg-secondary border border-border rounded-lg text-xs text-foreground font-medium"
+                      >
+                        <option value="both">Both audiences</option>
+                        <option value="school">School only</option>
+                        <option value="independent">Independent only</option>
+                      </select>
                     </div>
                   </div>
                   <div className="flex gap-1.5">
