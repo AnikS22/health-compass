@@ -676,10 +676,10 @@ export default function TeacherLiveSession() {
                   {showResults ? (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                       {liveResponses.map((r, i) => {
-                        const p = r.response_payload;
+                        const p = r.response_payload as Record<string, unknown>;
                         return (
                           <div key={i} className="rounded-xl border border-border bg-card p-4">
-                            {p.position && <span className="text-xs font-bold text-primary uppercase">{String(p.position)}</span>}
+                            {p.position ? <span className="text-xs font-bold text-primary uppercase">{String(p.position)}</span> : null}
                             <p className="text-sm text-foreground mt-1">{String(p.argument ?? p.text ?? "")}</p>
                           </div>
                         );
