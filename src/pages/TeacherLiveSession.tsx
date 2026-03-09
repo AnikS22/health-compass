@@ -15,6 +15,7 @@ import VideoCheckpointStep from "@/components/steps/VideoCheckpointStep";
 import type { VideoCheckpointConfig } from "@/components/steps/VideoCheckpointStep";
 
 type Participant = { id: string; display_name: string; joined_at: string };
+type LiveResponse = { id: string; user_id: string; response_payload: Record<string, unknown>; submitted_at: string };
 
 function getBlockIcon(type: string) {
   switch (type) {
