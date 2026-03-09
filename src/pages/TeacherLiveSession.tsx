@@ -60,6 +60,8 @@ export default function TeacherLiveSession() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [responseCount, setResponseCount] = useState(0);
+  const [liveResponses, setLiveResponses] = useState<LiveResponse[]>([]);
+  const [showResults, setShowResults] = useState(false);
   const presentationRef = useRef<HTMLDivElement>(null);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
 
