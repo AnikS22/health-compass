@@ -75,24 +75,22 @@ export default function LiveSessions() {
     setLoading(false);
   }
 
-  // Derived: filter lessons by selected course (optional)
+  // Derived: filter lessons by selected course
   const courseUnits = units.filter(u => u.course_id === courseId);
   const courseUnitIds = new Set(courseUnits.map(u => u.id));
-
-  // If a course is selected, show lessons in that course + lessons with no unit.
-  // If no course selected, show ALL lessons.
-  const filteredLessons = courseId
-    ? lessons.filter(l => !l.unit_id || courseUnitIds.has(l.unit_id))
-    : lessons;
-
-  // Only show versions that have a published status for the selected lesson
+  const courseLessons = lessons.filter(l => l.unit_id && courseUnitIds.has(l.unit_id));
   const selectedLessonVersions = versions.filter(v => v.lesson_id === lessonId);
 
-  // Reset lesson when course changes
+  // Auto-select first lesson when course changes
   useEffect(() => {
-    setLessonId("");
-    setLessonVersionId("");
-  }, [courseId]);
+    if (courseLessons.length > 0) {
+      const first = courseLessons[0];
+      setLessonId(first.id);
+    } else {
+      setLessonId("");
+      setLessonVersionId("");
+    }
+  }, [courseId, lessons.length]);
 
   // Auto-select first version when lesson changes
   useEffect(() => {
@@ -221,10 +219,11 @@ export default function LiveSessions() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Course (optional filter)</label>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Course</label>
               <select
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
+                required
                 className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
               >
                 <option value="">Select a course</option>
@@ -242,8 +241,8 @@ export default function LiveSessions() {
                 className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
               >
                 <option value="">Select a lesson</option>
-                {filteredLessons.map((l: LessonRow) => {
-                  const unit = units.find(u => u.id === l.unit_id);
+                {courseLessons.map((l) => {
+                  const unit = courseUnits.find(u => u.id === l.unit_id);
                   return (
                     <option key={l.id} value={l.id}>
                       {unit ? `${unit.title} → ` : ""}{l.title}
@@ -251,28 +250,28 @@ export default function LiveSessions() {
                   );
                 })}
               </select>
-              {filteredLessons.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1">No lessons found{courseId ? " in this course" : ""}.</p>
+              {courseLessons.length === 0 && courseId && (
+                <p className="text-xs text-muted-foreground mt-1">No lessons found in this course.</p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Lesson Version</label>
-              {lessonId && selectedLessonVersions.length === 0 ? (
-                <p className="text-xs text-destructive">No published versions for this lesson. Publish a version first.</p>
-              ) : (
+            {selectedLessonVersions.length > 1 && (
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">Version</label>
                 <select
                   value={lessonVersionId}
                   onChange={(e) => setLessonVersionId(e.target.value)}
                   required
                   className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all"
                 >
-                  <option value="">Select a version</option>
                   {selectedLessonVersions.map((v) => (
                     <option key={v.id} value={v.id}>{v.version_label}</option>
                   ))}
                 </select>
-              )}
-            </div>
+              </div>
+            )}
+            {lessonId && selectedLessonVersions.length === 0 && (
+              <p className="text-xs text-destructive">No published versions for this lesson. Publish a version first.</p>
+            )}
             <div className="flex gap-2">
               <button
                 type="submit"
