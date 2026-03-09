@@ -645,6 +645,18 @@ export default function ManageCurriculum() {
   const [renamingUnitId, setRenamingUnitId] = useState<string | null>(null);
   const [renameUnitTitle, setRenameUnitTitle] = useState("");
 
+  // Rename package
+  const [renamingPkgId, setRenamingPkgId] = useState<string | null>(null);
+  const [renamePkgTitle, setRenamePkgTitle] = useState("");
+
+  // Rename course
+  const [renamingCourseId, setRenamingCourseId] = useState<string | null>(null);
+  const [renameCourseTitle, setRenameCourseTitle] = useState("");
+
+  // Rename lesson
+  const [renamingLessonId, setRenamingLessonId] = useState<string | null>(null);
+  const [renameLessonTitle, setRenameLessonTitle] = useState("");
+
   // Confirm delete
   const [confirmDelete, setConfirmDelete] = useState<{ type: string; id: string; name: string } | null>(null);
 
