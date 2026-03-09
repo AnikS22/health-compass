@@ -13,7 +13,7 @@ type LiveSession = {
   lesson_version_id: string;
 };
 
-type ClassRow = { id: string; name: string };
+type ClassRow = { id: string; name: string; organization_id: string };
 type LessonRow = { id: string; title: string; unit_id: string | null };
 type VersionRow = { id: string; version_label: string; lesson_id: string; publish_status: string };
 type UnitRow = { id: string; title: string; course_id: string };
