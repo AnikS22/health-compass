@@ -114,6 +114,7 @@ export default function StudentLiveView() {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
+  const [revealedResults, setRevealedResults] = useState<Record<string, unknown> | null>(null);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
@@ -147,17 +148,20 @@ export default function StudentLiveView() {
         break;
       case "next_block":
         setActiveIndex((i) => Math.min(i + 1, Math.max(steps.length - 1, 0)));
-        setLocked(false); setSubmitted(false);
+        setLocked(false); setSubmitted(false); setRevealedResults(null);
         break;
       case "previous_block":
         setActiveIndex((i) => Math.max(i - 1, 0));
-        setLocked(false); setSubmitted(false);
+        setLocked(false); setSubmitted(false); setRevealedResults(null);
         break;
       case "goto_block":
         if (typeof evt.step_index === "number") {
           setActiveIndex(evt.step_index);
-          setLocked(false); setSubmitted(false);
+          setLocked(false); setSubmitted(false); setRevealedResults(null);
         }
+        break;
+      case "reveal_results":
+        setRevealedResults(evt as Record<string, unknown>);
         break;
       case "lock":
         setLocked(true);
@@ -418,7 +422,51 @@ export default function StudentLiveView() {
             <div className="rounded-2xl border-2 border-success/20 bg-success/5 p-8 text-center space-y-3 animate-in fade-in duration-300">
               <span className="text-4xl">✅</span>
               <p className="text-success font-bold text-lg">Response submitted!</p>
-              <p className="text-sm text-muted-foreground">Waiting for the class…</p>
+              {revealedResults ? (
+                <div className="mt-4 text-left space-y-3">
+                  <p className="text-sm font-bold text-foreground text-center">📊 Class Results</p>
+                  {Array.isArray(revealedResults.tallies) && (revealedResults.tallies as Array<{ option: string; count: number }>).map((t, i) => {
+                    const maxC = Math.max(...(revealedResults.tallies as Array<{ option: string; count: number }>).map(x => x.count), 1);
+                    return (
+                      <div key={i} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-foreground">{t.option}</span>
+                          <span className="font-bold text-foreground">{t.count}</span>
+                        </div>
+                        <div className="h-5 bg-secondary rounded-lg overflow-hidden">
+                          <div className="h-full bg-primary/70 rounded-lg transition-all duration-700" style={{ width: `${Math.max((t.count / maxC) * 100, 3)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {Array.isArray(revealedResults.mcq_tallies) && (revealedResults.mcq_tallies as Array<{ option: string; count: number }>).map((t, i) => {
+                    const maxC = Math.max(...(revealedResults.mcq_tallies as Array<{ option: string; count: number }>).map(x => x.count), 1);
+                    return (
+                      <div key={i} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-foreground">{t.option}</span>
+                          <span className="font-bold text-foreground">{t.count}</span>
+                        </div>
+                        <div className="h-5 bg-secondary rounded-lg overflow-hidden">
+                          <div className="h-full bg-primary/70 rounded-lg transition-all duration-700" style={{ width: `${Math.max((t.count / maxC) * 100, 3)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {Array.isArray(revealedResults.text_responses) && (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {(revealedResults.text_responses as string[]).map((text, i) => (
+                        <div key={i} className="rounded-lg border border-border bg-card p-3">
+                          <p className="text-xs text-foreground">{text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground text-center">{String(revealedResults.response_count ?? "")} total responses</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Waiting for the class…</p>
+              )}
             </div>
           ) : (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: "200ms" }}>

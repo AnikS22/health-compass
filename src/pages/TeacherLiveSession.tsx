@@ -15,6 +15,7 @@ import VideoCheckpointStep from "@/components/steps/VideoCheckpointStep";
 import type { VideoCheckpointConfig } from "@/components/steps/VideoCheckpointStep";
 
 type Participant = { id: string; display_name: string; joined_at: string };
+type LiveResponse = { id: string; user_id: string; response_payload: Record<string, unknown>; submitted_at: string };
 
 function getBlockIcon(type: string) {
   switch (type) {
@@ -59,6 +60,8 @@ export default function TeacherLiveSession() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [responseCount, setResponseCount] = useState(0);
+  const [liveResponses, setLiveResponses] = useState<LiveResponse[]>([]);
+  const [showResults, setShowResults] = useState(false);
   const presentationRef = useRef<HTMLDivElement>(null);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
 
@@ -88,7 +91,31 @@ export default function TeacherLiveSession() {
   }, [sessionId]);
 
   // Reset response count on step change
-  useEffect(() => { setResponseCount(0); }, [currentStep]);
+  useEffect(() => { setResponseCount(0); setLiveResponses([]); setShowResults(false); }, [currentStep]);
+
+  // Poll for live responses on the active block
+  useEffect(() => {
+    if (!sessionId || !started || !steps[currentStep]) return;
+    const blockId = steps[currentStep].id;
+    let mounted = true;
+
+    async function fetchResponses() {
+      const { data } = await supabase
+        .from("live_responses")
+        .select("id, user_id, response_payload, submitted_at")
+        .eq("live_session_id", sessionId!)
+        .eq("lesson_block_id", blockId)
+        .order("submitted_at", { ascending: true });
+      if (mounted && data) {
+        setLiveResponses(data as unknown as LiveResponse[]);
+        setResponseCount(data.length);
+      }
+    }
+
+    void fetchResponses();
+    const timer = setInterval(fetchResponses, 3000);
+    return () => { mounted = false; clearInterval(timer); };
+  }, [sessionId, started, currentStep, steps]);
 
   // Fullscreen change listener
   useEffect(() => {
@@ -316,6 +343,57 @@ export default function TeacherLiveSession() {
   const config = step?.config as Record<string, unknown>;
   const progress = steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
 
+  // Aggregate poll/multi_select results
+  function getPollTallies(): { option: string; count: number }[] {
+    const options = ((config.options as string[]) ?? []);
+    const tally: Record<string, number> = {};
+    options.forEach(o => { tally[o] = 0; });
+    for (const r of liveResponses) {
+      const payload = r.response_payload;
+      if (payload.selected_option && typeof payload.selected_option === "string") {
+        tally[payload.selected_option] = (tally[payload.selected_option] ?? 0) + 1;
+      }
+      if (payload.selected_options && Array.isArray(payload.selected_options)) {
+        for (const opt of payload.selected_options) tally[opt] = (tally[opt] ?? 0) + 1;
+      }
+      if (payload.answer) {
+        if (typeof payload.answer === "string") tally[payload.answer] = (tally[payload.answer] ?? 0) + 1;
+        if (Array.isArray(payload.answer)) payload.answer.forEach((a: string) => { tally[a] = (tally[a] ?? 0) + 1; });
+      }
+    }
+    return options.map(o => ({ option: o, count: tally[o] ?? 0 }));
+  }
+
+  // Aggregate MCQ results
+  function getMcqTallies(): { option: string; count: number }[] {
+    const options = ((config.options as Array<{ id: string; text: string }>) ?? []);
+    const tally: Record<string, number> = {};
+    options.forEach(o => { tally[o.id] = 0; });
+    for (const r of liveResponses) {
+      const payload = r.response_payload;
+      const ans = (payload.selected_option ?? payload.answer) as string;
+      if (ans && tally[ans] !== undefined) tally[ans]++;
+    }
+    return options.map(o => ({ option: o.text, count: tally[o.id] ?? 0 }));
+  }
+
+  function getTextResponses(): string[] {
+    return liveResponses
+      .map(r => (r.response_payload.text ?? r.response_payload.answer ?? "") as string)
+      .filter(Boolean);
+  }
+
+  function handleRevealResults() {
+    setShowResults(true);
+    broadcast("reveal_results", {
+      block_id: step?.id,
+      tallies: (step?.block_type === "poll" || step?.block_type === "multi_select") ? getPollTallies() : undefined,
+      mcq_tallies: (step?.block_type === "micro_challenge" || (step?.block_type as string) === "mcq") ? getMcqTallies() : undefined,
+      text_responses: ["short_answer", "reasoning_response", "exit_ticket"].includes(step?.block_type ?? "") ? getTextResponses().slice(0, 20) : undefined,
+      response_count: liveResponses.length,
+    });
+  }
+
   return (
     <div ref={presentationRef} className="min-h-screen bg-background flex flex-col">
       {/* Top bar */}
@@ -416,30 +494,68 @@ export default function TeacherLiveSession() {
               {(step.block_type === "micro_challenge" || (step.block_type as string) === "mcq") && (
                 <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{(config.question as string) ?? ""}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {((config.options as Array<{ id: string; text: string }>) ?? []).map((opt, i) => (
-                      <div key={opt.id} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3 hover:border-primary/30 transition-colors">
-                        <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                          {String.fromCharCode(65 + i)}
-                        </span>
-                        <span className="text-foreground font-medium">{opt.text}</span>
+                  {showResults ? (
+                    <div className="space-y-3">
+                      {getMcqTallies().map((t, i) => {
+                        const maxCount = Math.max(...getMcqTallies().map(x => x.count), 1);
+                        return (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-foreground flex items-center gap-2">
+                                <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{String.fromCharCode(65 + i)}</span>
+                                {t.option}
+                              </span>
+                              <span className="font-bold text-foreground">{t.count}</span>
+                            </div>
+                            <div className="h-8 bg-secondary rounded-xl overflow-hidden">
+                              <div className="h-full bg-primary/80 rounded-xl transition-all duration-700 ease-out flex items-center justify-end pr-3"
+                                style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }}>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        {((config.options as Array<{ id: string; text: string }>) ?? []).map((opt, i) => (
+                          <div key={opt.id} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3 hover:border-primary/30 transition-colors">
+                            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                              {String.fromCharCode(65 + i)}
+                            </span>
+                            <span className="text-foreground font-medium">{opt.text}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 justify-center pt-2">
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                      📱 Students answer on their devices
-                    </span>
-                  </div>
+                      <div className="flex items-center gap-2 justify-center pt-2">
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                          📱 {liveResponses.length} of {participants.length} answered
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
               {step.block_type === "reasoning_response" && (
-                <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-4">
+                <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? ""}</p>
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                    ✍️ Students writing on their devices
-                  </span>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {getTextResponses().map((text, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-sm text-foreground">{text}</p>
+                        </div>
+                      ))}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      ✍️ {liveResponses.length} of {participants.length} writing
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -460,7 +576,7 @@ export default function TeacherLiveSession() {
                   )}
                   <div className="flex items-center gap-2 justify-center pt-2">
                     <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                      👥 Students sharing perspectives
+                      👥 {liveResponses.length} of {participants.length} shared
                     </span>
                   </div>
                 </div>
@@ -469,39 +585,140 @@ export default function TeacherLiveSession() {
               {(step.block_type === "poll" || step.block_type === "multi_select") && (
                 <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{step.body ?? "Vote below"}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(((config.options as string[]) ?? []).map((opt: string, i: number) => (
-                      <div key={i} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3 hover:border-primary/30 transition-colors">
-                        <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                          {String.fromCharCode(65 + i)}
-                        </span>
-                        <span className="text-foreground font-medium">{opt}</span>
+                  {showResults ? (
+                    <div className="space-y-3">
+                      {getPollTallies().map((t, i) => {
+                        const maxCount = Math.max(...getPollTallies().map(x => x.count), 1);
+                        return (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-foreground flex items-center gap-2">
+                                <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{String.fromCharCode(65 + i)}</span>
+                                {t.option}
+                              </span>
+                              <span className="font-bold text-foreground">{t.count}</span>
+                            </div>
+                            <div className="h-8 bg-secondary rounded-xl overflow-hidden">
+                              <div className="h-full bg-primary/80 rounded-xl transition-all duration-700 ease-out"
+                                style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }}>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} vote{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(((config.options as string[]) ?? []).map((opt: string, i: number) => (
+                          <div key={i} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3 hover:border-primary/30 transition-colors">
+                            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                              {String.fromCharCode(65 + i)}
+                            </span>
+                            <span className="text-foreground font-medium">{opt}</span>
+                          </div>
+                        )))}
                       </div>
-                    )))}
-                  </div>
-                  <div className="flex items-center gap-2 justify-center pt-2">
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                      📊 Students voting on their devices
-                    </span>
-                  </div>
+                      <div className="flex items-center gap-2 justify-center pt-2">
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                          📊 {liveResponses.length} of {participants.length} voted
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
               {step.block_type === "short_answer" && (
-                <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-4">
+                <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? ""}</p>
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                    ✍️ Students typing on their devices
-                  </span>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {getTextResponses().map((text, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-sm text-foreground">{text}</p>
+                        </div>
+                      ))}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      ✍️ {liveResponses.length} of {participants.length} typing
+                    </span>
+                  )}
                 </div>
               )}
 
-              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer"].includes(step.block_type) && (
+              {step.block_type === "exit_ticket" && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Exit Ticket"}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {getTextResponses().map((text, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-sm text-foreground">{text}</p>
+                        </div>
+                      ))}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      🎫 {liveResponses.length} of {participants.length} submitted
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {(step.block_type === "debate") && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? ""}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => {
+                        const p = r.response_payload as Record<string, unknown>;
+                        return (
+                          <div key={i} className="rounded-xl border border-border bg-card p-4">
+                            {p.position ? <span className="text-xs font-bold text-primary uppercase">{String(p.position)}</span> : null}
+                            <p className="text-sm text-foreground mt-1">{String(p.argument ?? p.text ?? "")}</p>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      ⚖️ {liveResponses.length} of {participants.length} debating
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {(step.block_type === "collaborative_board" || step.block_type === "group_board") && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{step.body ?? "Share your ideas"}</p>
+                  {showResults ? (
+                    <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-sm text-foreground">{String(r.response_payload.text ?? r.response_payload.post ?? "")}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      📝 {liveResponses.length} of {participants.length} posted
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board", "group_board"].includes(step.block_type) && (
                 <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
                   <span className="text-5xl">{getBlockIcon(step.block_type)}</span>
                   <p className="text-lg font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>
                   <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                    📱 Students interact on their devices
+                    📱 {liveResponses.length} of {participants.length} responded
                   </span>
                 </div>
               )}
@@ -539,6 +756,20 @@ export default function TeacherLiveSession() {
             <button onClick={() => startTimer(60)} disabled={timerRunning} className="w-full py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-muted transition-colors disabled:opacity-40">
               <Timer className="w-4 h-4" /> 60s Timer
             </button>
+            {isInteractive && (
+              <button
+                onClick={handleRevealResults}
+                disabled={showResults || liveResponses.length === 0}
+                className={`w-full py-2.5 rounded-xl border text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                  showResults
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-card text-foreground hover:bg-muted"
+                } disabled:opacity-40`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                {showResults ? "Results Shown" : `Show Results (${liveResponses.length})`}
+              </button>
+            )}
           </div>
 
           {/* Step list */}
