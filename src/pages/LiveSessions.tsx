@@ -323,7 +323,11 @@ export default function LiveSessions() {
                     </div>
                     <div>
                       <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
-                        Session Code:
+                        {(() => {
+                          const ver = versions.find(v => v.id === s.lesson_version_id);
+                          const lesson = ver ? lessons.find(l => l.id === ver.lesson_id) : null;
+                          return lesson?.title ?? "Untitled Lesson";
+                        })()}
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="font-mono font-bold text-lg text-foreground bg-secondary px-3 py-1 rounded-lg">
