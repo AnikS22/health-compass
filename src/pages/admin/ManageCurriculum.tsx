@@ -1471,7 +1471,12 @@ export default function ManageCurriculum() {
                               <button onClick={() => { setSelectedLesson(l); if (l.versions.length > 0) loadBlocks(l.versions[0].id); }}
                                 className="flex-1 text-left">
                                 <span className="text-sm font-medium text-foreground">{l.title}</span>
-                                <div className="flex gap-2 mt-0.5">
+                                <div className="flex gap-2 mt-0.5 flex-wrap">
+                                  {l.audience_type && l.audience_type !== "both" && (
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${l.audience_type === "school" ? "bg-blue-500/10 text-blue-600" : "bg-purple-500/10 text-purple-600"}`}>
+                                      {l.audience_type}
+                                    </span>
+                                  )}
                                   {l.versions.map(v => (
                                     <span key={v.id} className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${v.publish_status === "published" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}>
                                       {v.version_label} · {v.publish_status}
