@@ -48,7 +48,7 @@ export default function LiveSessions() {
         .select("id, session_code, started_at, ended_at, class_id, lesson_version_id")
         .order("started_at", { ascending: false })
         .limit(20),
-      supabase.from("classes").select("id, name").order("created_at", { ascending: false }),
+      supabase.from("classes").select("id, name, organization_id").order("created_at", { ascending: false }),
       supabase.from("courses").select("id, title").order("title"),
       supabase.from("units").select("id, title, course_id").order("sequence_no"),
       supabase.from("lessons").select("id, title, unit_id").order("title"),
