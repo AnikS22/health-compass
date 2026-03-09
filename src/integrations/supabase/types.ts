@@ -815,6 +815,7 @@ export type Database = {
       }
       lessons: {
         Row: {
+          audience_type: Database["public"]["Enums"]["audience_type"]
           created_at: string
           difficulty: string | null
           estimated_minutes: number | null
@@ -828,6 +829,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          audience_type?: Database["public"]["Enums"]["audience_type"]
           created_at?: string
           difficulty?: string | null
           estimated_minutes?: number | null
@@ -841,6 +843,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          audience_type?: Database["public"]["Enums"]["audience_type"]
           created_at?: string
           difficulty?: string | null
           estimated_minutes?: number | null
@@ -1737,6 +1740,7 @@ export type Database = {
     }
     Enums: {
       assignment_target_type: "class" | "group" | "student"
+      audience_type: "school" | "independent" | "both"
       block_type:
         | "video"
         | "poll"
@@ -1904,6 +1908,7 @@ export const Constants = {
   public: {
     Enums: {
       assignment_target_type: ["class", "group", "student"],
+      audience_type: ["school", "independent", "both"],
       block_type: [
         "video",
         "poll",
