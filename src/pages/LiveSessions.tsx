@@ -116,12 +116,19 @@ export default function LiveSessions() {
       .eq("id", appUserId)
       .single();
 
+    const orgId = orgData?.organization_id;
+    if (!orgId) {
+      console.error("Failed to start session: user has no organization assigned.");
+      setCreating(false);
+      return;
+    }
+
     const code = generateCode();
     const { error } = await supabase.from("live_sessions").insert({
       class_id: classId,
       lesson_version_id: lessonVersionId,
       host_teacher_id: appUserId,
-      organization_id: orgData?.organization_id ?? "",
+      organization_id: orgId,
       session_code: code,
     });
 
