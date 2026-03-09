@@ -13,6 +13,7 @@ type Unit = { id: string; title: string; course_id: string; sequence_no: number 
 type Lesson = {
   id: string; title: string; grade_band: string | null; difficulty: string | null;
   estimated_minutes: number | null; unit_id: string | null;
+  audience_type: "school" | "independent" | "both";
   versions: { id: string; version_label: string; publish_status: string }[];
 };
 type Block = {
