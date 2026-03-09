@@ -30,6 +30,7 @@ export default function PeerReviewStep({ config, body, onComplete, isLive }: Pro
 
   function submitReview() {
     setPhase("done");
+    onComplete({ text: ownResponse, rating: rating || undefined });
   }
 
   return (
