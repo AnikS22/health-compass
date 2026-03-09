@@ -9,6 +9,30 @@ import ConceptRevealStep from "../components/steps/ConceptRevealStep";
 import MicroChallengeStep from "../components/steps/MicroChallengeStep";
 import ReasoningResponseStep from "../components/steps/ReasoningResponseStep";
 import PeerCompareStep from "../components/steps/PeerCompareStep";
+import DebateStep from "../components/steps/DebateStep";
+import type { DebateConfig } from "../components/steps/DebateStep";
+import CollaborativeBoardStep from "../components/steps/CollaborativeBoardStep";
+import type { CollaborativeBoardConfig } from "../components/steps/CollaborativeBoardStep";
+import PeerReviewStep from "../components/steps/PeerReviewStep";
+import type { PeerReviewConfig } from "../components/steps/PeerReviewStep";
+import GroupChallengeStep from "../components/steps/GroupChallengeStep";
+import type { GroupChallengeConfig } from "../components/steps/GroupChallengeStep";
+import ShortAnswerStep from "../components/steps/ShortAnswerStep";
+import type { ShortAnswerConfig } from "../components/steps/ShortAnswerStep";
+import ExitTicketStep from "../components/steps/ExitTicketStep";
+import type { ExitTicketConfig } from "../components/steps/ExitTicketStep";
+import ScenarioStep from "../components/steps/ScenarioStep";
+import type { ScenarioConfig } from "../components/steps/ScenarioStep";
+import DilemmaTreeStep from "../components/steps/DilemmaTreeStep";
+import type { DilemmaTreeConfig } from "../components/steps/DilemmaTreeStep";
+import DragDropStep from "../components/steps/DragDropStep";
+import type { DragDropConfig } from "../components/steps/DragDropStep";
+import MatchingStep from "../components/steps/MatchingStep";
+import type { MatchingConfig } from "../components/steps/MatchingStep";
+import DrawingStep from "../components/steps/DrawingStep";
+import type { DrawingConfig } from "../components/steps/DrawingStep";
+import RedTeamStep from "../components/steps/RedTeamStep";
+import type { RedTeamConfig } from "../components/steps/RedTeamStep";
 import type {
   ConceptRevealConfig, MicroChallengeConfig,
   ReasoningResponseConfig, PeerCompareConfig,
