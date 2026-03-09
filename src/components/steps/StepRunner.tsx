@@ -13,6 +13,26 @@ import GroupChallengeStep from "./GroupChallengeStep";
 import type { GroupChallengeConfig } from "./GroupChallengeStep";
 import VideoCheckpointStep from "./VideoCheckpointStep";
 import type { VideoCheckpointConfig } from "./VideoCheckpointStep";
+import PollStep from "./PollStep";
+import type { PollConfig } from "./PollStep";
+import McqStep from "./McqStep";
+import type { McqConfig } from "./McqStep";
+import ShortAnswerStep from "./ShortAnswerStep";
+import type { ShortAnswerConfig } from "./ShortAnswerStep";
+import ScenarioStep from "./ScenarioStep";
+import type { ScenarioConfig } from "./ScenarioStep";
+import ExitTicketStep from "./ExitTicketStep";
+import type { ExitTicketConfig } from "./ExitTicketStep";
+import DragDropStep from "./DragDropStep";
+import type { DragDropConfig } from "./DragDropStep";
+import MatchingStep from "./MatchingStep";
+import type { MatchingConfig } from "./MatchingStep";
+import DilemmaTreeStep from "./DilemmaTreeStep";
+import type { DilemmaTreeConfig } from "./DilemmaTreeStep";
+import DrawingStep from "./DrawingStep";
+import type { DrawingConfig } from "./DrawingStep";
+import RedTeamStep from "./RedTeamStep";
+import type { RedTeamConfig } from "./RedTeamStep";
 import type {
   StepBlock,
   StepResponse,
@@ -28,9 +48,7 @@ interface Props {
   lessonTitle: string;
   onStepComplete?: (stepId: string, response: StepResponse) => void;
   onLessonComplete?: () => void;
-  /** If provided, teacher controls the current step index */
   controlledIndex?: number;
-  /** Peer distribution data for peer_compare steps */
   peerDistributions?: Record<string, PeerDistribution[]>;
   isLive?: boolean;
 }
@@ -68,7 +86,7 @@ export default function StepRunner({
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-3">
-          <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
             <span className="text-3xl">🎉</span>
           </div>
           <h2 className="text-xl font-bold text-foreground">Lesson Complete!</h2>
@@ -76,6 +94,200 @@ export default function StepRunner({
         </div>
       </div>
     );
+  }
+
+  function renderStep() {
+    if (!step) return null;
+
+    switch (step.block_type) {
+      case "concept_reveal":
+        return (
+          <ConceptRevealStep
+            config={step.config as unknown as ConceptRevealConfig}
+            body={step.body}
+            onComplete={() => handleComplete()}
+          />
+        );
+      case "micro_challenge":
+        return (
+          <MicroChallengeStep
+            config={step.config as unknown as MicroChallengeConfig}
+            hints={step.hints}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "reasoning_response":
+        return (
+          <ReasoningResponseStep
+            config={step.config as unknown as ReasoningResponseConfig}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "peer_compare":
+        return (
+          <PeerCompareStep
+            config={step.config as unknown as PeerCompareConfig}
+            distribution={peerDistributions?.[step.id]}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        );
+      case "debate":
+        return (
+          <DebateStep
+            config={step.config as unknown as DebateConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        );
+      case "collaborative_board":
+      case "group_board":
+        return (
+          <CollaborativeBoardStep
+            config={step.config as unknown as CollaborativeBoardConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        );
+      case "peer_review":
+        return (
+          <PeerReviewStep
+            config={step.config as unknown as PeerReviewConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        );
+      case "group_challenge":
+        return (
+          <GroupChallengeStep
+            config={step.config as unknown as GroupChallengeConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        );
+      case "video_checkpoint":
+      case "video":
+        return (
+          <VideoCheckpointStep
+            config={step.config as unknown as VideoCheckpointConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+            isLive={isLive}
+          />
+        );
+      case "poll":
+        return (
+          <PollStep
+            config={step.config as unknown as PollConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "mcq":
+        return (
+          <McqStep
+            config={step.config as unknown as McqConfig}
+            body={step.body}
+            hints={step.hints}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "multi_select":
+        return (
+          <McqStep
+            config={step.config as unknown as McqConfig}
+            body={step.body}
+            hints={step.hints}
+            isMultiSelect
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "short_answer":
+        return (
+          <ShortAnswerStep
+            config={step.config as unknown as ShortAnswerConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "scenario":
+        return (
+          <ScenarioStep
+            config={step.config as unknown as ScenarioConfig}
+            body={step.body}
+            hints={step.hints}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "exit_ticket":
+        return (
+          <ExitTicketStep
+            config={step.config as unknown as ExitTicketConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "drag_drop":
+        return (
+          <DragDropStep
+            config={step.config as unknown as DragDropConfig}
+            body={step.body}
+            hints={step.hints}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "matching":
+        return (
+          <MatchingStep
+            config={step.config as unknown as MatchingConfig}
+            body={step.body}
+            hints={step.hints}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "dilemma_tree":
+        return (
+          <DilemmaTreeStep
+            config={step.config as unknown as DilemmaTreeConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "drawing":
+        return (
+          <DrawingStep
+            config={step.config as unknown as DrawingConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "red_team":
+        return (
+          <RedTeamStep
+            config={step.config as unknown as RedTeamConfig}
+            body={step.body}
+            onComplete={(r) => handleComplete(r)}
+          />
+        );
+      default:
+        return (
+          <div className="bg-card border border-border rounded-xl p-6 text-center">
+            <p className="text-muted-foreground text-sm">
+              Unsupported block type: <strong>{step.block_type}</strong>
+            </p>
+            <button
+              onClick={() => handleComplete()}
+              className="mt-4 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90"
+            >
+              Continue
+            </button>
+          </div>
+        );
+    }
   }
 
   return (
@@ -90,7 +302,6 @@ export default function StepRunner({
             Step {currentIndex + 1} of {steps.length}
           </span>
         </div>
-        {/* Progress bar */}
         <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
           <div
             className="h-full rounded-full bg-primary transition-all duration-500"
@@ -104,74 +315,7 @@ export default function StepRunner({
 
       {/* Step content */}
       <div key={step.id}>
-        {step.block_type === "concept_reveal" && (
-          <ConceptRevealStep
-            config={step.config as unknown as ConceptRevealConfig}
-            body={step.body}
-            onComplete={() => handleComplete()}
-          />
-        )}
-        {step.block_type === "micro_challenge" && (
-          <MicroChallengeStep
-            config={step.config as unknown as MicroChallengeConfig}
-            hints={step.hints}
-            onComplete={(r) => handleComplete(r)}
-          />
-        )}
-        {step.block_type === "reasoning_response" && (
-          <ReasoningResponseStep
-            config={step.config as unknown as ReasoningResponseConfig}
-            onComplete={(r) => handleComplete(r)}
-          />
-        )}
-        {step.block_type === "peer_compare" && (
-          <PeerCompareStep
-            config={step.config as unknown as PeerCompareConfig}
-            distribution={peerDistributions?.[step.id]}
-            onComplete={(r) => handleComplete(r)}
-            isLive={isLive}
-          />
-        )}
-        {step.block_type === "debate" && (
-          <DebateStep
-            config={step.config as unknown as DebateConfig}
-            body={step.body}
-            onComplete={(r) => handleComplete(r)}
-            isLive={isLive}
-          />
-        )}
-        {(step.block_type === "collaborative_board" || step.block_type === "group_board") && (
-          <CollaborativeBoardStep
-            config={step.config as unknown as CollaborativeBoardConfig}
-            body={step.body}
-            onComplete={(r) => handleComplete(r)}
-            isLive={isLive}
-          />
-        )}
-        {step.block_type === "peer_review" as string && (
-          <PeerReviewStep
-            config={step.config as unknown as PeerReviewConfig}
-            body={step.body}
-            onComplete={(r) => handleComplete(r)}
-            isLive={isLive}
-          />
-        )}
-        {step.block_type === "group_challenge" as string && (
-          <GroupChallengeStep
-            config={step.config as unknown as GroupChallengeConfig}
-            body={step.body}
-            onComplete={(r) => handleComplete(r)}
-            isLive={isLive}
-          />
-        )}
-        {(step.block_type === "video_checkpoint" || step.block_type === "video") && (
-          <VideoCheckpointStep
-            config={step.config as unknown as VideoCheckpointConfig}
-            body={step.body}
-            onComplete={(r) => handleComplete(r)}
-            isLive={isLive}
-          />
-        )}
+        {renderStep()}
       </div>
     </div>
   );
