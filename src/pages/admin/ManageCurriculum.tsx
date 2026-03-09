@@ -1402,6 +1402,15 @@ export default function ManageCurriculum() {
                   </div>
                   <input placeholder="Estimated minutes" type="number" value={form.estimated_minutes || ""} onChange={e => setForm({ ...form, estimated_minutes: e.target.value })}
                     className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50" />
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-muted-foreground self-center">Audience:</span>
+                    {(["both", "school", "independent"] as const).map(at => (
+                      <button key={at} type="button" onClick={() => setForm({ ...form, audience_type: at })}
+                        className={`px-2 py-1 rounded text-xs font-bold capitalize ${(form.audience_type || "both") === at ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+                        {at}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={createLesson} className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold">Create</button>
                     <button onClick={() => setShowCreateLesson(false)} className="px-3 py-1.5 bg-secondary text-foreground rounded-lg text-xs font-bold">Cancel</button>
