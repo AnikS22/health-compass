@@ -198,6 +198,11 @@ export default function LiveSessions() {
       {showCreate && (
         <div className="bg-card rounded-2xl border border-primary/30 p-6 shadow-lg">
           <h2 className="text-lg font-bold text-foreground mb-4">Start a New Live Session</h2>
+          {errorMsg && (
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-sm text-destructive font-medium">
+              {errorMsg}
+            </div>
+          )}
           <form onSubmit={startSession} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-foreground mb-1.5">Class</label>
