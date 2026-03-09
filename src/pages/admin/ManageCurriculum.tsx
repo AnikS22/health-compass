@@ -774,56 +774,97 @@ export default function ManageCurriculum() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (!data.title || typeof data.title !== "string") {
-        alert("Invalid JSON: missing 'title' field."); setImporting(false); return;
-      }
-      let unitId = data.unit_id;
-      if (!unitId) {
-        const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
-        if (courseUnitsLocal.length === 0) {
-          alert("No units in this course. Please create a unit first."); setImporting(false); return;
+
+      // Support importing multiple lessons via a "lessons" array wrapper
+      const lessonsToImport: any[] = Array.isArray(data.lessons)
+        ? data.lessons
+        : [data];
+
+      let totalLessons = 0;
+      let totalBlocks = 0;
+
+      for (const lessonData of lessonsToImport) {
+        if (!lessonData.title || typeof lessonData.title !== "string") {
+          alert(`Skipping entry without a valid 'title' field.`);
+          continue;
         }
-        if (courseUnitsLocal.length === 1) {
-          unitId = courseUnitsLocal[0].id;
-        } else {
-          const unitChoice = prompt(
-            `Which unit? Enter the number:\n${courseUnitsLocal.map((u, i) => `${i + 1}. ${u.title}`).join("\n")}`
-          );
-          if (!unitChoice) { setImporting(false); return; }
-          const idx = parseInt(unitChoice) - 1;
-          if (idx < 0 || idx >= courseUnitsLocal.length) { alert("Invalid selection."); setImporting(false); return; }
-          unitId = courseUnitsLocal[idx].id;
+
+        // ── Resolve or create unit ──
+        let unitId = lessonData.unit_id;
+        if (!unitId && lessonData.unit) {
+          // Auto-create unit from JSON — accepts string or { title, sequence_no }
+          const unitTitle = typeof lessonData.unit === "string" ? lessonData.unit : lessonData.unit.title;
+          if (!unitTitle) {
+            alert(`Lesson "${lessonData.title}": unit object missing 'title'.`); continue;
+          }
+          // Check if unit with same name already exists in this course
+          const existingUnit = units.find(u => u.course_id === selectedCourse && u.title.toLowerCase() === unitTitle.toLowerCase());
+          if (existingUnit) {
+            unitId = existingUnit.id;
+          } else {
+            const seqNo = (typeof lessonData.unit === "object" && lessonData.unit.sequence_no) ?? (units.filter(u => u.course_id === selectedCourse).length + 1);
+            const { data: newUnit, error: unitErr } = await supabase.from("units").insert({
+              course_id: selectedCourse, title: unitTitle.trim(), sequence_no: seqNo,
+            }).select("id, title, course_id, sequence_no, created_at").single();
+            if (unitErr || !newUnit) {
+              alert(`Failed to create unit "${unitTitle}": ${unitErr?.message || "Unknown error"}`); continue;
+            }
+            unitId = newUnit.id;
+            // Add to local state so subsequent lessons in same batch reuse it
+            units.push(newUnit as any);
+          }
         }
+        if (!unitId) {
+          const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
+          if (courseUnitsLocal.length === 0) {
+            alert(`No units in this course and no 'unit' specified for "${lessonData.title}". Skipping.`); continue;
+          }
+          if (courseUnitsLocal.length === 1) {
+            unitId = courseUnitsLocal[0].id;
+          } else {
+            const unitChoice = prompt(
+              `Which unit for "${lessonData.title}"? Enter the number:\n${courseUnitsLocal.map((u, i) => `${i + 1}. ${u.title}`).join("\n")}`
+            );
+            if (!unitChoice) continue;
+            const idx = parseInt(unitChoice) - 1;
+            if (idx < 0 || idx >= courseUnitsLocal.length) { alert("Invalid selection."); continue; }
+            unitId = courseUnitsLocal[idx].id;
+          }
+        }
+
+        const { data: lesson, error: lessonErr } = await supabase.from("lessons").insert({
+          title: lessonData.title.trim(), unit_id: unitId,
+          grade_band: lessonData.grade_band || null, difficulty: lessonData.difficulty || null,
+          estimated_minutes: lessonData.estimated_minutes || null,
+          learning_objectives: lessonData.learning_objectives || [],
+          sensitive_topic_flags: lessonData.sensitive_topic_flags || [],
+          required_materials: lessonData.required_materials || [],
+        }).select("id").single();
+        if (lessonErr || !lesson) {
+          alert(`Failed to create lesson "${lessonData.title}": ${lessonErr?.message || "Unknown error"}`); continue;
+        }
+        const { data: version, error: versionErr } = await supabase.from("lesson_versions").insert({
+          lesson_id: lesson.id, version_label: lessonData.version_label || "v1", publish_status: lessonData.publish_status || "draft",
+        }).select("id").single();
+        if (versionErr || !version) {
+          alert(`Lesson "${lessonData.title}" created but version failed: ${versionErr?.message || "Unknown error"}`); continue;
+        }
+        const blocksData = Array.isArray(lessonData.blocks) ? lessonData.blocks : [];
+        if (blocksData.length > 0) {
+          const blockInserts = blocksData.map((b: any, i: number) => ({
+            lesson_version_id: version.id, block_type: b.block_type,
+            title: b.title || null, body: b.body || null, config: b.config || {},
+            hints: b.hints || [], is_gate: b.is_gate || false, mastery_rules: b.mastery_rules || {},
+            sequence_no: b.sequence_no ?? (i + 1),
+          }));
+          const { error: blocksErr } = await supabase.from("lesson_blocks").insert(blockInserts);
+          if (blocksErr) alert(`Lesson "${lessonData.title}" blocks failed: ${blocksErr.message}`);
+          else totalBlocks += blocksData.length;
+        }
+        totalLessons++;
       }
-      const { data: lesson, error: lessonErr } = await supabase.from("lessons").insert({
-        title: data.title.trim(), unit_id: unitId,
-        grade_band: data.grade_band || null, difficulty: data.difficulty || null,
-        estimated_minutes: data.estimated_minutes || null,
-        learning_objectives: data.learning_objectives || [],
-        sensitive_topic_flags: data.sensitive_topic_flags || [],
-        required_materials: data.required_materials || [],
-      }).select("id").single();
-      if (lessonErr || !lesson) {
-        alert(`Failed to create lesson: ${lessonErr?.message || "Unknown error"}`); setImporting(false); return;
-      }
-      const { data: version, error: versionErr } = await supabase.from("lesson_versions").insert({
-        lesson_id: lesson.id, version_label: data.version_label || "v1", publish_status: data.publish_status || "draft",
-      }).select("id").single();
-      if (versionErr || !version) {
-        alert(`Lesson created but version failed: ${versionErr?.message || "Unknown error"}`); setImporting(false); return;
-      }
-      const blocksData = Array.isArray(data.blocks) ? data.blocks : [];
-      if (blocksData.length > 0) {
-        const blockInserts = blocksData.map((b: any, i: number) => ({
-          lesson_version_id: version.id, block_type: b.block_type,
-          title: b.title || null, body: b.body || null, config: b.config || {},
-          hints: b.hints || [], is_gate: b.is_gate || false, mastery_rules: b.mastery_rules || {},
-          sequence_no: b.sequence_no ?? (i + 1),
-        }));
-        const { error: blocksErr } = await supabase.from("lesson_blocks").insert(blockInserts);
-        if (blocksErr) alert(`Lesson & version created, but blocks failed: ${blocksErr.message}`);
-      }
-      alert(`✅ Imported "${data.title}" with ${blocksData.length} blocks!`);
+
+      alert(`✅ Imported ${totalLessons} lesson(s) with ${totalBlocks} total blocks!`);
       await loadAll();
       loadCourseLessons(selectedCourse);
     } catch (err: any) {
