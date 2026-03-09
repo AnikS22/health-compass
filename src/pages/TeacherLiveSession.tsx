@@ -91,7 +91,31 @@ export default function TeacherLiveSession() {
   }, [sessionId]);
 
   // Reset response count on step change
-  useEffect(() => { setResponseCount(0); }, [currentStep]);
+  useEffect(() => { setResponseCount(0); setLiveResponses([]); setShowResults(false); }, [currentStep]);
+
+  // Poll for live responses on the active block
+  useEffect(() => {
+    if (!sessionId || !started || !steps[currentStep]) return;
+    const blockId = steps[currentStep].id;
+    let mounted = true;
+
+    async function fetchResponses() {
+      const { data } = await supabase
+        .from("live_responses")
+        .select("id, user_id, response_payload, submitted_at")
+        .eq("live_session_id", sessionId!)
+        .eq("lesson_block_id", blockId)
+        .order("submitted_at", { ascending: true });
+      if (mounted && data) {
+        setLiveResponses(data as unknown as LiveResponse[]);
+        setResponseCount(data.length);
+      }
+    }
+
+    void fetchResponses();
+    const timer = setInterval(fetchResponses, 3000);
+    return () => { mounted = false; clearInterval(timer); };
+  }, [sessionId, started, currentStep, steps]);
 
   // Fullscreen change listener
   useEffect(() => {
