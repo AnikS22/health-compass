@@ -1,7 +1,10 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface PollConfig {
   options: string[];
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
