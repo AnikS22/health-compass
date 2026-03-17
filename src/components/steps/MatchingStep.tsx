@@ -1,8 +1,11 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface MatchingConfig {
   instructions?: string;
   pairs: { left: string; right: string }[];
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
