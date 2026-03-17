@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Star, Users, MessageCircle } from "lucide-react";
+import BlockBody from "./BlockBody";
 
 export interface PeerReviewConfig {
   prompt: string;
   review_criteria?: string[];
   max_rating?: number;
   anonymous?: boolean;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
@@ -45,7 +48,7 @@ export default function PeerReviewStep({ config, body, onComplete, isLive }: Pro
         </div>
       </div>
 
-      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       {/* Phase 1: Write your response */}
       {phase === "write" && (

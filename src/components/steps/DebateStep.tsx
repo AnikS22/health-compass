@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { MessageSquare, ThumbsUp, Send } from "lucide-react";
+import BlockBody from "./BlockBody";
 
 export interface DebateConfig {
   topic: string;
   sides?: string[];
   time_limit_seconds?: number;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
@@ -38,7 +41,7 @@ export default function DebateStep({ config, body, onComplete, isLive }: Props) 
         </div>
       </div>
 
-      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       {!submitted && (
         <>

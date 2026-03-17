@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Users, Trophy, Send, Clock } from "lucide-react";
+import BlockBody from "./BlockBody";
 
 export interface GroupChallengeConfig {
   prompt: string;
@@ -8,6 +9,8 @@ export interface GroupChallengeConfig {
   submission_type?: "text" | "choice" | "collaborative_doc";
   choices?: { id: string; text: string }[];
   rubric_criteria?: string[];
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
@@ -42,7 +45,7 @@ export default function GroupChallengeStep({ config, body, onComplete, isLive }:
         </div>
       </div>
 
-      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       {/* Group info */}
       <div className="flex gap-3">

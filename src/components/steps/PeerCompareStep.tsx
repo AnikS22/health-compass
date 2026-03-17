@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BarChart3, Users } from "lucide-react";
 import type { PeerCompareConfig, PeerDistribution } from "./types";
+import BlockBody from "./BlockBody";
 
 interface Props {
   config: PeerCompareConfig;

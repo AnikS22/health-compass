@@ -1,7 +1,10 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface PollConfig {
   options: string[];
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
@@ -24,7 +27,7 @@ export default function PollStep({ config, body, onComplete }: Props) {
   if (options.length === 0) {
     return (
       <div className="space-y-5">
-        {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+        <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
         <div className="bg-secondary/50 border border-border rounded-xl p-6 text-center space-y-3">
           <p className="text-muted-foreground text-sm">This poll has no options configured.</p>
           <button
@@ -40,7 +43,7 @@ export default function PollStep({ config, body, onComplete }: Props) {
 
   return (
     <div className="space-y-5">
-      {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
       <div className="space-y-2">
         {options.map((opt, i) => (
           <button

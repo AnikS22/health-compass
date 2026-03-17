@@ -22,6 +22,8 @@ export interface ConceptRevealConfig {
   visual_url?: string;
   key_idea: string;
   detail?: string;
+  image_url?: string;
+  images?: string[];
 }
 
 export interface MicroChallengeConfig {
@@ -29,18 +31,24 @@ export interface MicroChallengeConfig {
   options: { id: string; text: string }[];
   correct_option_id: string;
   explanation: string;
+  image_url?: string;
+  images?: string[];
 }
 
 export interface ReasoningResponseConfig {
   prompt: string;
   min_words?: number;
   exemplar?: string;
+  image_url?: string;
+  images?: string[];
 }
 
 export interface PeerCompareConfig {
   prompt: string;
   options?: { id: string; text: string }[];
   show_distribution: boolean;
+  image_url?: string;
+  images?: string[];
 }
 
 export interface StepResponse {

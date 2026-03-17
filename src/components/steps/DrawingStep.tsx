@@ -1,9 +1,12 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface DrawingConfig {
   prompt?: string;
   background_url?: string;
   allow_text?: boolean;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
@@ -23,7 +26,7 @@ export default function DrawingStep({ config, body, onComplete }: Props) {
 
   return (
     <div className="space-y-5">
-      {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
       {config.prompt && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
           <p className="text-sm text-foreground">{config.prompt}</p>

@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { StickyNote, Plus, ThumbsUp } from "lucide-react";
+import BlockBody from "./BlockBody";
 
 export interface CollaborativeBoardConfig {
   prompt: string;
   max_posts?: number;
   allow_reactions?: boolean;
   anonymous?: boolean;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Post {
@@ -58,7 +61,7 @@ export default function CollaborativeBoardStep({ config, body, onComplete, isLiv
         </div>
       </div>
 
-      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       {!submitted && (
         <>
