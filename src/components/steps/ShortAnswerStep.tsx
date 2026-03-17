@@ -1,8 +1,11 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface ShortAnswerConfig {
   prompt: string;
   min_words?: number;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
