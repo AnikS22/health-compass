@@ -1,9 +1,12 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface DragDropConfig {
   instructions?: string;
   categories: string[];
   items: { id: string; text: string; correct_category: string }[];
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
