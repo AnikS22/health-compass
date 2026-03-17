@@ -31,6 +31,8 @@ export interface MicroChallengeConfig {
   options: { id: string; text: string }[];
   correct_option_id: string;
   explanation: string;
+  image_url?: string;
+  images?: string[];
 }
 
 export interface ReasoningResponseConfig {
