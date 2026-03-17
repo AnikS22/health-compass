@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { MessageSquare, ThumbsUp, Send } from "lucide-react";
+import BlockBody from "./BlockBody";
 
 export interface DebateConfig {
   topic: string;
   sides?: string[];
   time_limit_seconds?: number;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
