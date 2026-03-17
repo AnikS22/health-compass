@@ -1,9 +1,12 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface ExitTicketConfig {
   question: string;
   response_type?: "text" | "rating" | "emoji";
   include_confidence?: boolean;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
