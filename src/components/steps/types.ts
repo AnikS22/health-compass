@@ -22,6 +22,8 @@ export interface ConceptRevealConfig {
   visual_url?: string;
   key_idea: string;
   detail?: string;
+  image_url?: string;
+  images?: string[];
 }
 
 export interface MicroChallengeConfig {
