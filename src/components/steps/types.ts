@@ -39,6 +39,8 @@ export interface ReasoningResponseConfig {
   prompt: string;
   min_words?: number;
   exemplar?: string;
+  image_url?: string;
+  images?: string[];
 }
 
 export interface PeerCompareConfig {
