@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Lightbulb, ChevronDown } from "lucide-react";
 import type { ConceptRevealConfig } from "./types";
+import BlockBody from "./BlockBody";
 
 interface Props {
   config: ConceptRevealConfig;
