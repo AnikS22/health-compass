@@ -671,6 +671,11 @@ export default function ManageCurriculum() {
   const [importing, setImporting] = useState(false);
   const importFileRef = useRef<HTMLInputElement>(null);
 
+  // Import assignment modal state
+  type ImportEntry = { lessonData: any; assignedUnitId: string; newUnitName: string };
+  const [importEntries, setImportEntries] = useState<ImportEntry[]>([]);
+  const [showImportModal, setShowImportModal] = useState(false);
+
   const loadAll = useCallback(async () => {
     const [pkgRes, courseRes, unitRes] = await Promise.all([
       supabase.from("curriculum_packages").select("*").order("title"),
