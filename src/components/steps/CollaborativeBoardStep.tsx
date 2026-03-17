@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { StickyNote, Plus, ThumbsUp } from "lucide-react";
+import BlockBody from "./BlockBody";
 
 export interface CollaborativeBoardConfig {
   prompt: string;
   max_posts?: number;
   allow_reactions?: boolean;
   anonymous?: boolean;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Post {
