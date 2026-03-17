@@ -1,9 +1,12 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface ScenarioConfig {
   description: string;
   choices: { id: string; text: string; outcome: string }[];
   debrief?: string;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
