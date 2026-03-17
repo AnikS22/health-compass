@@ -671,6 +671,11 @@ export default function ManageCurriculum() {
   const [importing, setImporting] = useState(false);
   const importFileRef = useRef<HTMLInputElement>(null);
 
+  // Import assignment modal state
+  type ImportEntry = { lessonData: any; assignedUnitId: string; newUnitName: string };
+  const [importEntries, setImportEntries] = useState<ImportEntry[]>([]);
+  const [showImportModal, setShowImportModal] = useState(false);
+
   const loadAll = useCallback(async () => {
     const [pkgRes, courseRes, unitRes] = await Promise.all([
       supabase.from("curriculum_packages").select("*").order("title"),
@@ -779,76 +784,75 @@ export default function ManageCurriculum() {
     setShowCreateBlock(false); setForm({}); loadBlocks(selectedVersion);
   }
 
-  // ── Import lesson from JSON file ──
-  async function handleImportLesson(e: React.ChangeEvent<HTMLInputElement>) {
+  // ── Import lesson from JSON file — Step 1: parse & show assignment modal ──
+  function handleImportLesson(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !selectedCourse) return;
     e.target.value = "";
+    file.text().then(text => {
+      try {
+        const data = JSON.parse(text);
+        const lessonsToImport: any[] = Array.isArray(data.lessons) ? data.lessons : [data];
+        const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
+        const entries: ImportEntry[] = lessonsToImport
+          .filter(l => l.title && typeof l.title === "string")
+          .map(lessonData => {
+            // Try to pre-resolve unit from JSON
+            let preselectedUnit = "";
+            if (lessonData.unit_id) {
+              preselectedUnit = lessonData.unit_id;
+            } else if (lessonData.unit) {
+              const unitTitle = typeof lessonData.unit === "string" ? lessonData.unit : lessonData.unit?.title;
+              const existing = courseUnitsLocal.find(u => u.title.toLowerCase() === (unitTitle || "").toLowerCase());
+              if (existing) preselectedUnit = existing.id;
+            }
+            if (!preselectedUnit && courseUnitsLocal.length === 1) {
+              preselectedUnit = courseUnitsLocal[0].id;
+            }
+            return { lessonData, assignedUnitId: preselectedUnit, newUnitName: "" };
+          });
+        if (entries.length === 0) { alert("No valid lessons found in JSON."); return; }
+        setImportEntries(entries);
+        setShowImportModal(true);
+      } catch (err: any) {
+        alert(`Invalid JSON: ${err.message}`);
+      }
+    });
+  }
+
+  // ── Import lesson from JSON file — Step 2: execute import with assigned units ──
+  async function executeImport() {
+    if (!selectedCourse) return;
+    setShowImportModal(false);
     setImporting(true);
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-
-      // Support importing multiple lessons via a "lessons" array wrapper
-      const lessonsToImport: any[] = Array.isArray(data.lessons)
-        ? data.lessons
-        : [data];
-
       let totalLessons = 0;
       let totalBlocks = 0;
 
-      for (const lessonData of lessonsToImport) {
-        if (!lessonData.title || typeof lessonData.title !== "string") {
-          alert(`Skipping entry without a valid 'title' field.`);
-          continue;
-        }
+      for (const entry of importEntries) {
+        const { lessonData } = entry;
+        let unitId = entry.assignedUnitId;
 
-        // ── Resolve or create unit ──
-        let unitId = lessonData.unit_id;
-        if (!unitId && lessonData.unit) {
-          // Auto-create unit from JSON — accepts string or { title, sequence_no }
-          const unitTitle = typeof lessonData.unit === "string" ? lessonData.unit : lessonData.unit.title;
-          if (!unitTitle) {
-            alert(`Lesson "${lessonData.title}": unit object missing 'title'.`); continue;
-          }
-          // Check if unit with same name already exists in this course
-          const existingUnit = units.find(u => u.course_id === selectedCourse && u.title.toLowerCase() === unitTitle.toLowerCase());
-          if (existingUnit) {
-            unitId = existingUnit.id;
+        // If user typed a new unit name
+        if (unitId === "__new__" && entry.newUnitName.trim()) {
+          const existing = units.find(u => u.course_id === selectedCourse && u.title.toLowerCase() === entry.newUnitName.trim().toLowerCase());
+          if (existing) {
+            unitId = existing.id;
           } else {
-            const rawSeq = typeof lessonData.unit === "object" && lessonData.unit.sequence_no != null
-              ? Number(lessonData.unit.sequence_no)
-              : null;
-            const seqNo = Number.isInteger(rawSeq) && rawSeq! > 0
-              ? rawSeq!
-              : units.filter(u => u.course_id === selectedCourse).length + 1;
+            const seqNo = units.filter(u => u.course_id === selectedCourse).length + 1;
             const { data: newUnit, error: unitErr } = await supabase.from("units").insert({
-              course_id: selectedCourse, title: unitTitle.trim(), sequence_no: seqNo,
+              course_id: selectedCourse, title: entry.newUnitName.trim(), sequence_no: seqNo,
             }).select("id, title, course_id, sequence_no, created_at").single();
             if (unitErr || !newUnit) {
-              alert(`Failed to create unit "${unitTitle}": ${unitErr?.message || "Unknown error"}`); continue;
+              alert(`Failed to create unit "${entry.newUnitName}": ${unitErr?.message || "Unknown error"}`); continue;
             }
             unitId = newUnit.id;
-            // Add to local state so subsequent lessons in same batch reuse it
             units.push(newUnit as any);
           }
         }
-        if (!unitId) {
-          const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
-          if (courseUnitsLocal.length === 0) {
-            alert(`No units in this course and no 'unit' specified for "${lessonData.title}". Skipping.`); continue;
-          }
-          if (courseUnitsLocal.length === 1) {
-            unitId = courseUnitsLocal[0].id;
-          } else {
-            const unitChoice = prompt(
-              `Which unit for "${lessonData.title}"? Enter the number:\n${courseUnitsLocal.map((u, i) => `${i + 1}. ${u.title}`).join("\n")}`
-            );
-            if (!unitChoice) continue;
-            const idx = parseInt(unitChoice) - 1;
-            if (idx < 0 || idx >= courseUnitsLocal.length) { alert("Invalid selection."); continue; }
-            unitId = courseUnitsLocal[idx].id;
-          }
+
+        if (!unitId || unitId === "__new__") {
+          alert(`No unit assigned for "${lessonData.title}". Skipping.`); continue;
         }
 
         const { data: lesson, error: lessonErr } = await supabase.from("lessons").insert({
@@ -887,9 +891,10 @@ export default function ManageCurriculum() {
       await loadAll();
       loadCourseLessons(selectedCourse);
     } catch (err: any) {
-      alert(`Import failed: ${err.message || "Invalid JSON file"}`);
+      alert(`Import failed: ${err.message || "Unknown error"}`);
     } finally {
       setImporting(false);
+      setImportEntries([]);
     }
   }
 
@@ -1743,6 +1748,70 @@ export default function ManageCurriculum() {
               <button onClick={handleConfirmDelete}
                 className="px-4 py-2 bg-destructive text-destructive-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Assignment Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col">
+            <div className="p-5 border-b border-border">
+              <h3 className="text-lg font-bold text-foreground">Assign Lessons to Units</h3>
+              <p className="text-xs text-muted-foreground mt-1">Choose which unit each lesson should be imported into.</p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {importEntries.map((entry, idx) => {
+                const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
+                return (
+                  <div key={idx} className="border border-border rounded-xl p-4 bg-background space-y-2">
+                    <p className="text-sm font-bold text-foreground truncate">{entry.lessonData.title}</p>
+                    {entry.lessonData.blocks && (
+                      <p className="text-[10px] text-muted-foreground">{entry.lessonData.blocks.length} block(s)</p>
+                    )}
+                    <select
+                      value={entry.assignedUnitId}
+                      onChange={e => {
+                        const updated = [...importEntries];
+                        updated[idx] = { ...entry, assignedUnitId: e.target.value };
+                        setImportEntries(updated);
+                      }}
+                      className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground"
+                    >
+                      <option value="">— Select unit —</option>
+                      {courseUnitsLocal.map(u => (
+                        <option key={u.id} value={u.id}>{u.title}</option>
+                      ))}
+                      <option value="__new__">+ Create new unit…</option>
+                    </select>
+                    {entry.assignedUnitId === "__new__" && (
+                      <input
+                        placeholder="New unit name"
+                        value={entry.newUnitName}
+                        onChange={e => {
+                          const updated = [...importEntries];
+                          updated[idx] = { ...entry, newUnitName: e.target.value };
+                          setImportEntries(updated);
+                        }}
+                        className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50"
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="p-4 border-t border-border flex gap-2 justify-end">
+              <button onClick={() => { setShowImportModal(false); setImportEntries([]); }}
+                className="px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-bold hover:bg-secondary/80">
+                Cancel
+              </button>
+              <button
+                onClick={executeImport}
+                disabled={importEntries.some(e => !e.assignedUnitId || (e.assignedUnitId === "__new__" && !e.newUnitName.trim()))}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50">
+                Import {importEntries.length} Lesson{importEntries.length !== 1 ? "s" : ""}
               </button>
             </div>
           </div>
