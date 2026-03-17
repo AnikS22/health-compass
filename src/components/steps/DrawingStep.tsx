@@ -1,9 +1,12 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface DrawingConfig {
   prompt?: string;
   background_url?: string;
   allow_text?: boolean;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
