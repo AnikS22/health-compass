@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Star, Users, MessageCircle } from "lucide-react";
+import BlockBody from "./BlockBody";
 
 export interface PeerReviewConfig {
   prompt: string;
   review_criteria?: string[];
   max_rating?: number;
   anonymous?: boolean;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
