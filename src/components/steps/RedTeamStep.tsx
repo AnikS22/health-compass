@@ -1,9 +1,12 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface RedTeamConfig {
   system_prompt: string;
   success_criteria?: string;
   max_attempts?: number;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
