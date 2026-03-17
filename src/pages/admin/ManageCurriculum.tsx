@@ -784,76 +784,75 @@ export default function ManageCurriculum() {
     setShowCreateBlock(false); setForm({}); loadBlocks(selectedVersion);
   }
 
-  // ── Import lesson from JSON file ──
-  async function handleImportLesson(e: React.ChangeEvent<HTMLInputElement>) {
+  // ── Import lesson from JSON file — Step 1: parse & show assignment modal ──
+  function handleImportLesson(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !selectedCourse) return;
     e.target.value = "";
+    file.text().then(text => {
+      try {
+        const data = JSON.parse(text);
+        const lessonsToImport: any[] = Array.isArray(data.lessons) ? data.lessons : [data];
+        const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
+        const entries: ImportEntry[] = lessonsToImport
+          .filter(l => l.title && typeof l.title === "string")
+          .map(lessonData => {
+            // Try to pre-resolve unit from JSON
+            let preselectedUnit = "";
+            if (lessonData.unit_id) {
+              preselectedUnit = lessonData.unit_id;
+            } else if (lessonData.unit) {
+              const unitTitle = typeof lessonData.unit === "string" ? lessonData.unit : lessonData.unit?.title;
+              const existing = courseUnitsLocal.find(u => u.title.toLowerCase() === (unitTitle || "").toLowerCase());
+              if (existing) preselectedUnit = existing.id;
+            }
+            if (!preselectedUnit && courseUnitsLocal.length === 1) {
+              preselectedUnit = courseUnitsLocal[0].id;
+            }
+            return { lessonData, assignedUnitId: preselectedUnit, newUnitName: "" };
+          });
+        if (entries.length === 0) { alert("No valid lessons found in JSON."); return; }
+        setImportEntries(entries);
+        setShowImportModal(true);
+      } catch (err: any) {
+        alert(`Invalid JSON: ${err.message}`);
+      }
+    });
+  }
+
+  // ── Import lesson from JSON file — Step 2: execute import with assigned units ──
+  async function executeImport() {
+    if (!selectedCourse) return;
+    setShowImportModal(false);
     setImporting(true);
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-
-      // Support importing multiple lessons via a "lessons" array wrapper
-      const lessonsToImport: any[] = Array.isArray(data.lessons)
-        ? data.lessons
-        : [data];
-
       let totalLessons = 0;
       let totalBlocks = 0;
 
-      for (const lessonData of lessonsToImport) {
-        if (!lessonData.title || typeof lessonData.title !== "string") {
-          alert(`Skipping entry without a valid 'title' field.`);
-          continue;
-        }
+      for (const entry of importEntries) {
+        const { lessonData } = entry;
+        let unitId = entry.assignedUnitId;
 
-        // ── Resolve or create unit ──
-        let unitId = lessonData.unit_id;
-        if (!unitId && lessonData.unit) {
-          // Auto-create unit from JSON — accepts string or { title, sequence_no }
-          const unitTitle = typeof lessonData.unit === "string" ? lessonData.unit : lessonData.unit.title;
-          if (!unitTitle) {
-            alert(`Lesson "${lessonData.title}": unit object missing 'title'.`); continue;
-          }
-          // Check if unit with same name already exists in this course
-          const existingUnit = units.find(u => u.course_id === selectedCourse && u.title.toLowerCase() === unitTitle.toLowerCase());
-          if (existingUnit) {
-            unitId = existingUnit.id;
+        // If user typed a new unit name
+        if (unitId === "__new__" && entry.newUnitName.trim()) {
+          const existing = units.find(u => u.course_id === selectedCourse && u.title.toLowerCase() === entry.newUnitName.trim().toLowerCase());
+          if (existing) {
+            unitId = existing.id;
           } else {
-            const rawSeq = typeof lessonData.unit === "object" && lessonData.unit.sequence_no != null
-              ? Number(lessonData.unit.sequence_no)
-              : null;
-            const seqNo = Number.isInteger(rawSeq) && rawSeq! > 0
-              ? rawSeq!
-              : units.filter(u => u.course_id === selectedCourse).length + 1;
+            const seqNo = units.filter(u => u.course_id === selectedCourse).length + 1;
             const { data: newUnit, error: unitErr } = await supabase.from("units").insert({
-              course_id: selectedCourse, title: unitTitle.trim(), sequence_no: seqNo,
+              course_id: selectedCourse, title: entry.newUnitName.trim(), sequence_no: seqNo,
             }).select("id, title, course_id, sequence_no, created_at").single();
             if (unitErr || !newUnit) {
-              alert(`Failed to create unit "${unitTitle}": ${unitErr?.message || "Unknown error"}`); continue;
+              alert(`Failed to create unit "${entry.newUnitName}": ${unitErr?.message || "Unknown error"}`); continue;
             }
             unitId = newUnit.id;
-            // Add to local state so subsequent lessons in same batch reuse it
             units.push(newUnit as any);
           }
         }
-        if (!unitId) {
-          const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
-          if (courseUnitsLocal.length === 0) {
-            alert(`No units in this course and no 'unit' specified for "${lessonData.title}". Skipping.`); continue;
-          }
-          if (courseUnitsLocal.length === 1) {
-            unitId = courseUnitsLocal[0].id;
-          } else {
-            const unitChoice = prompt(
-              `Which unit for "${lessonData.title}"? Enter the number:\n${courseUnitsLocal.map((u, i) => `${i + 1}. ${u.title}`).join("\n")}`
-            );
-            if (!unitChoice) continue;
-            const idx = parseInt(unitChoice) - 1;
-            if (idx < 0 || idx >= courseUnitsLocal.length) { alert("Invalid selection."); continue; }
-            unitId = courseUnitsLocal[idx].id;
-          }
+
+        if (!unitId || unitId === "__new__") {
+          alert(`No unit assigned for "${lessonData.title}". Skipping.`); continue;
         }
 
         const { data: lesson, error: lessonErr } = await supabase.from("lessons").insert({
@@ -892,9 +891,10 @@ export default function ManageCurriculum() {
       await loadAll();
       loadCourseLessons(selectedCourse);
     } catch (err: any) {
-      alert(`Import failed: ${err.message || "Invalid JSON file"}`);
+      alert(`Import failed: ${err.message || "Unknown error"}`);
     } finally {
       setImporting(false);
+      setImportEntries([]);
     }
   }
 
