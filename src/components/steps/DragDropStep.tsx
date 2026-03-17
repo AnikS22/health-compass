@@ -55,7 +55,7 @@ export default function DragDropStep({ config, body, hints, onComplete }: Props)
 
   return (
     <div className="space-y-5">
-      {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
       {config.instructions && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
           <p className="text-sm text-foreground">{config.instructions}</p>

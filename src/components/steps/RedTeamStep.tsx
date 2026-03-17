@@ -39,7 +39,7 @@ export default function RedTeamStep({ config, body, onComplete }: Props) {
 
   return (
     <div className="space-y-5">
-      {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       <div className="bg-card border border-border rounded-xl p-5">
         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">AI System to Red-Team</p>

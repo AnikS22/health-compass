@@ -43,7 +43,7 @@ export default function PollStep({ config, body, onComplete }: Props) {
 
   return (
     <div className="space-y-5">
-      {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
       <div className="space-y-2">
         {options.map((opt, i) => (
           <button

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CheckCircle2, XCircle, HelpCircle } from "lucide-react";
 import type { MicroChallengeConfig, Hint } from "./types";
+import BlockBody from "./BlockBody";
 
 interface Props {
   config: MicroChallengeConfig;

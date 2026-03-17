@@ -14,9 +14,7 @@ export default function ConceptRevealStep({ config, body, onComplete }: Props) {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {body && (
-        <p className="text-lg text-muted-foreground leading-relaxed">{body}</p>
-      )}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       {config.visual_url && (
         <div className="rounded-xl overflow-hidden border border-border">

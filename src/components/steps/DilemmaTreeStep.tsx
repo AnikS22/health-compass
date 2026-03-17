@@ -64,7 +64,7 @@ export default function DilemmaTreeStep({ config, body, onComplete }: Props) {
 
   return (
     <div className="space-y-5">
-      {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
       
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
         <p className="text-sm font-semibold text-foreground">{config.root_question}</p>

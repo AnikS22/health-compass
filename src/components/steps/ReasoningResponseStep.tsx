@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PenLine } from "lucide-react";
 import type { ReasoningResponseConfig } from "./types";
+import BlockBody from "./BlockBody";
 
 interface Props {
   config: ReasoningResponseConfig;

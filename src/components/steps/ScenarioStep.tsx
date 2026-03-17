@@ -32,7 +32,7 @@ export default function ScenarioStep({ config, body, hints, onComplete }: Props)
 
   return (
     <div className="space-y-5">
-      {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
       <div className="bg-card border border-border rounded-xl p-5">
         <p className="text-sm text-foreground leading-relaxed">{config.description}</p>
       </div>

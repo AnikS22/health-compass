@@ -61,7 +61,7 @@ export default function CollaborativeBoardStep({ config, body, onComplete, isLiv
         </div>
       </div>
 
-      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       {!submitted && (
         <>

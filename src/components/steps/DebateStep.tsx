@@ -41,7 +41,7 @@ export default function DebateStep({ config, body, onComplete, isLive }: Props) 
         </div>
       </div>
 
-      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       {!submitted && (
         <>

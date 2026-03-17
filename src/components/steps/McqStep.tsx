@@ -54,7 +54,7 @@ export default function McqStep({ config, body, hints, isMultiSelect, onComplete
 
   return (
     <div className="space-y-5">
-      {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
       <div className="space-y-2">
         {(config.options || []).map((opt, i) => {
           const isSelected = selected.has(opt);

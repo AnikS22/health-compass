@@ -45,7 +45,7 @@ export default function GroupChallengeStep({ config, body, onComplete, isLive }:
         </div>
       </div>
 
-      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       {/* Group info */}
       <div className="flex gap-3">

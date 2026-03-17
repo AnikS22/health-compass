@@ -48,7 +48,7 @@ export default function PeerReviewStep({ config, body, onComplete, isLive }: Pro
         </div>
       </div>
 
-      {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
 
       {/* Phase 1: Write your response */}
       {phase === "write" && (
