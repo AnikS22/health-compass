@@ -1,8 +1,11 @@
 import { useState } from "react";
+import BlockBody from "./BlockBody";
 
 export interface McqConfig {
   options: string[];
   correct_answer?: string;
+  image_url?: string;
+  images?: string[];
 }
 
 interface Props {
