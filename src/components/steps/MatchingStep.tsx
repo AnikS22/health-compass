@@ -104,7 +104,7 @@ export default function MatchingStep({ config, body, hints, onComplete }: Props)
   if (pairs.length === 0) {
     return (
       <div className="space-y-5">
-        {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+        <BlockBody body={body} config={config as unknown as Record<string, unknown>} />
         <div className="bg-secondary/50 border border-border rounded-xl p-6 text-center space-y-3">
           <p className="text-muted-foreground text-sm">No matching pairs configured.</p>
           <button onClick={() => onComplete({ matches: {}, correct: true, score: 100 })}
