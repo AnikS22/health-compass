@@ -1753,6 +1753,70 @@ export default function ManageCurriculum() {
           </div>
         </div>
       )}
+
+      {/* Import Assignment Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col">
+            <div className="p-5 border-b border-border">
+              <h3 className="text-lg font-bold text-foreground">Assign Lessons to Units</h3>
+              <p className="text-xs text-muted-foreground mt-1">Choose which unit each lesson should be imported into.</p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {importEntries.map((entry, idx) => {
+                const courseUnitsLocal = units.filter(u => u.course_id === selectedCourse);
+                return (
+                  <div key={idx} className="border border-border rounded-xl p-4 bg-background space-y-2">
+                    <p className="text-sm font-bold text-foreground truncate">{entry.lessonData.title}</p>
+                    {entry.lessonData.blocks && (
+                      <p className="text-[10px] text-muted-foreground">{entry.lessonData.blocks.length} block(s)</p>
+                    )}
+                    <select
+                      value={entry.assignedUnitId}
+                      onChange={e => {
+                        const updated = [...importEntries];
+                        updated[idx] = { ...entry, assignedUnitId: e.target.value };
+                        setImportEntries(updated);
+                      }}
+                      className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground"
+                    >
+                      <option value="">— Select unit —</option>
+                      {courseUnitsLocal.map(u => (
+                        <option key={u.id} value={u.id}>{u.title}</option>
+                      ))}
+                      <option value="__new__">+ Create new unit…</option>
+                    </select>
+                    {entry.assignedUnitId === "__new__" && (
+                      <input
+                        placeholder="New unit name"
+                        value={entry.newUnitName}
+                        onChange={e => {
+                          const updated = [...importEntries];
+                          updated[idx] = { ...entry, newUnitName: e.target.value };
+                          setImportEntries(updated);
+                        }}
+                        className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50"
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="p-4 border-t border-border flex gap-2 justify-end">
+              <button onClick={() => { setShowImportModal(false); setImportEntries([]); }}
+                className="px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-bold hover:bg-secondary/80">
+                Cancel
+              </button>
+              <button
+                onClick={executeImport}
+                disabled={importEntries.some(e => !e.assignedUnitId || (e.assignedUnitId === "__new__" && !e.newUnitName.trim()))}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50">
+                Import {importEntries.length} Lesson{importEntries.length !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
