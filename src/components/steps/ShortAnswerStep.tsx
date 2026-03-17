@@ -15,11 +15,13 @@ export default function ShortAnswerStep({ config, body, onComplete }: Props) {
   const [text, setText] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  const prompt = config?.prompt || "";
+  const minWords = config?.min_words || 0;
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-  const meetsMinWords = !config.min_words || wordCount >= config.min_words;
+  const meetsMinWords = !minWords || wordCount >= minWords;
 
   function handleSubmit() {
-    if (!meetsMinWords) return;
+    if (!meetsMinWords || !text.trim()) return;
     setSubmitted(true);
     onComplete({ text: text.trim() });
   }
@@ -27,9 +29,9 @@ export default function ShortAnswerStep({ config, body, onComplete }: Props) {
   return (
     <div className="space-y-5">
       {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
-      {config.prompt && (
+      {prompt && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-          <p className="text-sm text-foreground font-medium">{config.prompt}</p>
+          <p className="text-sm text-foreground font-medium">{prompt}</p>
         </div>
       )}
       <textarea
@@ -42,7 +44,7 @@ export default function ShortAnswerStep({ config, body, onComplete }: Props) {
       />
       <div className="flex items-center justify-between">
         <span className={`text-xs ${meetsMinWords ? "text-muted-foreground" : "text-destructive"}`}>
-          {wordCount} words{config.min_words ? ` / ${config.min_words} minimum` : ""}
+          {wordCount} words{minWords ? ` / ${minWords} minimum` : ""}
         </span>
         {!submitted ? (
           <button

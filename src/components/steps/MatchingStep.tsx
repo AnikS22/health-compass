@@ -12,15 +12,27 @@ interface Props {
   onComplete: (response: { matches: Record<string, string>; correct: boolean; score: number }) => void;
 }
 
+const PAIR_COLORS = [
+  { border: "border-blue-500", bg: "bg-blue-500/10", text: "text-blue-600", dot: "bg-blue-500" },
+  { border: "border-emerald-500", bg: "bg-emerald-500/10", text: "text-emerald-600", dot: "bg-emerald-500" },
+  { border: "border-violet-500", bg: "bg-violet-500/10", text: "text-violet-600", dot: "bg-violet-500" },
+  { border: "border-amber-500", bg: "bg-amber-500/10", text: "text-amber-600", dot: "bg-amber-500" },
+  { border: "border-rose-500", bg: "bg-rose-500/10", text: "text-rose-600", dot: "bg-rose-500" },
+  { border: "border-cyan-500", bg: "bg-cyan-500/10", text: "text-cyan-600", dot: "bg-cyan-500" },
+  { border: "border-orange-500", bg: "bg-orange-500/10", text: "text-orange-600", dot: "bg-orange-500" },
+  { border: "border-pink-500", bg: "bg-pink-500/10", text: "text-pink-600", dot: "bg-pink-500" },
+  { border: "border-teal-500", bg: "bg-teal-500/10", text: "text-teal-600", dot: "bg-teal-500" },
+  { border: "border-indigo-500", bg: "bg-indigo-500/10", text: "text-indigo-600", dot: "bg-indigo-500" },
+];
+
 export default function MatchingStep({ config, body, hints, onComplete }: Props) {
-  const pairs = config.pairs || [];
+  const pairs = config?.pairs || [];
   const [matches, setMatches] = useState<Record<number, number>>({});
   const [selectedLeft, setSelectedLeft] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [hintLevel, setHintLevel] = useState(0);
 
-  // Shuffle right side once
   const [shuffledRight] = useState(() => {
     const indices = pairs.map((_, i) => i);
     for (let i = indices.length - 1; i > 0; i--) {
@@ -33,12 +45,25 @@ export default function MatchingStep({ config, body, hints, onComplete }: Props)
   const usedRight = new Set(Object.values(matches));
   const availableHints = (hints || []).filter(h => h.level <= hintLevel);
 
+  // Map left index → color index for matched pairs
+  function getColorForLeft(leftIdx: number): typeof PAIR_COLORS[0] | null {
+    if (matches[leftIdx] === undefined) return null;
+    const matchOrder = Object.keys(matches).map(Number).sort((a, b) => a - b);
+    const colorIdx = matchOrder.indexOf(leftIdx) % PAIR_COLORS.length;
+    return PAIR_COLORS[colorIdx];
+  }
+
+  function getColorForRight(rightIdx: number): typeof PAIR_COLORS[0] | null {
+    const leftEntry = Object.entries(matches).find(([, r]) => r === rightIdx);
+    if (!leftEntry) return null;
+    return getColorForLeft(Number(leftEntry[0]));
+  }
+
   function handleLeftClick(leftIdx: number) {
     if (submitted) return;
     if (selectedLeft === leftIdx) {
       setSelectedLeft(null);
     } else if (matches[leftIdx] !== undefined) {
-      // Unmatch
       setMatches(prev => {
         const next = { ...prev };
         delete next[leftIdx];
@@ -73,6 +98,21 @@ export default function MatchingStep({ config, body, hints, onComplete }: Props)
     onComplete({ matches: matchMap, correct: correctCount === pairs.length, score: s });
   }
 
+  if (pairs.length === 0) {
+    return (
+      <div className="space-y-5">
+        {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
+        <div className="bg-secondary/50 border border-border rounded-xl p-6 text-center space-y-3">
+          <p className="text-muted-foreground text-sm">No matching pairs configured.</p>
+          <button onClick={() => onComplete({ matches: {}, correct: true, score: 100 })}
+            className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90">
+            Continue →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       {body && <p className="text-foreground text-base leading-relaxed">{body}</p>}
@@ -92,6 +132,7 @@ export default function MatchingStep({ config, body, hints, onComplete }: Props)
             const isSelected = selectedLeft === leftIdx;
             const isCorrect = submitted && matches[leftIdx] === leftIdx;
             const isWrong = submitted && matches[leftIdx] !== undefined && matches[leftIdx] !== leftIdx;
+            const color = getColorForLeft(leftIdx);
             return (
               <button
                 key={leftIdx}
@@ -100,12 +141,17 @@ export default function MatchingStep({ config, body, hints, onComplete }: Props)
                 className={`w-full text-left px-3 py-2.5 rounded-xl border-2 text-xs transition-all ${
                   isCorrect ? "border-green-500 bg-green-500/10" :
                   isWrong ? "border-destructive bg-destructive/10" :
-                  isSelected ? "border-primary bg-primary/10" :
-                  isMatched ? "border-primary/50 bg-primary/5" :
+                  isSelected ? "border-primary bg-primary/10 ring-2 ring-primary/30" :
+                  isMatched && color ? `${color.border} ${color.bg}` :
                   "border-border bg-card hover:border-primary/50"
                 } text-foreground`}
               >
-                {pair.left}
+                <span className="flex items-center gap-2">
+                  {isMatched && color && !submitted && (
+                    <span className={`w-2.5 h-2.5 rounded-full ${color.dot} shrink-0`} />
+                  )}
+                  {pair.left}
+                </span>
               </button>
             );
           })}
@@ -118,6 +164,7 @@ export default function MatchingStep({ config, body, hints, onComplete }: Props)
             const matchedLeftIdx = Object.entries(matches).find(([, r]) => r === rightIdx)?.[0];
             const isCorrect = submitted && matchedLeftIdx !== undefined && Number(matchedLeftIdx) === rightIdx;
             const isWrong = submitted && matchedLeftIdx !== undefined && Number(matchedLeftIdx) !== rightIdx;
+            const color = getColorForRight(rightIdx);
             return (
               <button
                 key={rightIdx}
@@ -126,12 +173,17 @@ export default function MatchingStep({ config, body, hints, onComplete }: Props)
                 className={`w-full text-left px-3 py-2.5 rounded-xl border-2 text-xs transition-all ${
                   isCorrect ? "border-green-500 bg-green-500/10" :
                   isWrong ? "border-destructive bg-destructive/10" :
-                  isUsed ? "border-primary/50 bg-primary/5" :
+                  isUsed && color ? `${color.border} ${color.bg}` :
                   selectedLeft !== null ? "border-border bg-card hover:border-primary cursor-pointer" :
                   "border-border bg-card"
                 } text-foreground`}
               >
-                {pairs[rightIdx].right}
+                <span className="flex items-center gap-2">
+                  {isUsed && color && !submitted && (
+                    <span className={`w-2.5 h-2.5 rounded-full ${color.dot} shrink-0`} />
+                  )}
+                  {pairs[rightIdx].right}
+                </span>
               </button>
             );
           })}
