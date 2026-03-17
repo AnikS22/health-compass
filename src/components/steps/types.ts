@@ -47,6 +47,8 @@ export interface PeerCompareConfig {
   prompt: string;
   options?: { id: string; text: string }[];
   show_distribution: boolean;
+  image_url?: string;
+  images?: string[];
 }
 
 export interface StepResponse {
