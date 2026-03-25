@@ -43,6 +43,54 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import VideoCheckpointStep from "../components/steps/VideoCheckpointStep";
 import type { VideoCheckpointConfig } from "../components/steps/VideoCheckpointStep";
 
+// Live board feed component - shows other students' posts after submitting
+function LiveBoardFeed({ sessionId, blockId }: { sessionId: string; blockId: string }) {
+  const [posts, setPosts] = useState<{ text: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!sessionId || !blockId) return;
+    let mounted = true;
+    async function fetchPosts() {
+      const { data } = await supabase
+        .from("live_responses")
+        .select("response_payload, user_id")
+        .eq("live_session_id", sessionId)
+        .eq("lesson_block_id", blockId)
+        .order("submitted_at", { ascending: true })
+        .limit(50);
+      if (!mounted || !data) return;
+      const items: { text: string; name: string }[] = [];
+      for (const r of data) {
+        const p = r.response_payload as Record<string, unknown>;
+        if (Array.isArray(p.posts)) {
+          for (const post of p.posts) items.push({ text: String(post), name: "" });
+        } else if (p.text || p.post) {
+          items.push({ text: String(p.text ?? p.post ?? ""), name: "" });
+        }
+      }
+      setPosts(items.filter(i => i.text.length > 0));
+    }
+    void fetchPosts();
+    const interval = setInterval(fetchPosts, 4000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [sessionId, blockId]);
+
+  if (posts.length === 0) return <p className="text-sm text-muted-foreground text-center">Waiting for classmates…</p>;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider text-center">Class Board</p>
+      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+        {posts.map((p, i) => (
+          <div key={i} className="rounded-lg border border-border bg-card p-3">
+            <p className="text-xs text-foreground">{p.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function videoHasCheckpoints(config: Record<string, unknown>): boolean {
   return Array.isArray(config.checkpoints) && config.checkpoints.length > 0;
 }
