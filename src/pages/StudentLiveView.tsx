@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Radio, Smartphone, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +42,54 @@ import type {
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import VideoCheckpointStep from "../components/steps/VideoCheckpointStep";
 import type { VideoCheckpointConfig } from "../components/steps/VideoCheckpointStep";
+
+// Live board feed component - shows other students' posts after submitting
+function LiveBoardFeed({ sessionId, blockId }: { sessionId: string; blockId: string }) {
+  const [posts, setPosts] = useState<{ text: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!sessionId || !blockId) return;
+    let mounted = true;
+    async function fetchPosts() {
+      const { data } = await supabase
+        .from("live_responses")
+        .select("response_payload, user_id")
+        .eq("live_session_id", sessionId)
+        .eq("lesson_block_id", blockId)
+        .order("submitted_at", { ascending: true })
+        .limit(50);
+      if (!mounted || !data) return;
+      const items: { text: string; name: string }[] = [];
+      for (const r of data) {
+        const p = r.response_payload as Record<string, unknown>;
+        if (Array.isArray(p.posts)) {
+          for (const post of p.posts) items.push({ text: String(post), name: "" });
+        } else if (p.text || p.post) {
+          items.push({ text: String(p.text ?? p.post ?? ""), name: "" });
+        }
+      }
+      setPosts(items.filter(i => i.text.length > 0));
+    }
+    void fetchPosts();
+    const interval = setInterval(fetchPosts, 4000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [sessionId, blockId]);
+
+  if (posts.length === 0) return <p className="text-sm text-muted-foreground text-center">Waiting for classmates…</p>;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider text-center">Class Board</p>
+      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+        {posts.map((p, i) => (
+          <div key={i} className="rounded-lg border border-border bg-card p-3">
+            <p className="text-xs text-foreground">{p.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function videoHasCheckpoints(config: Record<string, unknown>): boolean {
   return Array.isArray(config.checkpoints) && config.checkpoints.length > 0;
@@ -505,11 +553,17 @@ export default function StudentLiveView() {
               <p className="text-sm text-muted-foreground">Wait for your teacher to unlock</p>
             </div>
           ) : submitted ? (
-            <div className="rounded-2xl border-2 border-success/20 bg-success/5 p-8 text-center space-y-3 animate-in fade-in duration-300">
-              <span className="text-4xl">✅</span>
-              <p className="text-success font-bold text-lg">Response submitted!</p>
+            <div className="space-y-4 animate-in fade-in duration-300">
+              <div className="rounded-2xl border-2 border-success/20 bg-success/5 p-6 text-center space-y-2">
+                <span className="text-3xl">✅</span>
+                <p className="text-success font-bold">Response submitted!</p>
+              </div>
               {revealedResults ? renderRevealedResults() : (
-                <p className="text-sm text-muted-foreground">Waiting for the class…</p>
+                (step?.block_type === "collaborative_board" || step?.block_type === "group_board") ? (
+                  <LiveBoardFeed sessionId={sessionId!} blockId={steps[activeIndex]?.id ?? ""} />
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center">Waiting for the class…</p>
+                )
               )}
             </div>
           ) : (
