@@ -43,13 +43,15 @@ export default function LiveSessions() {
   }, []);
 
   async function loadData() {
+    if (!appUserId) return;
     const [sessRes, classRes, courseRes, unitRes, lessonRes, versionRes] = await Promise.all([
       supabase
         .from("live_sessions")
         .select("id, session_code, started_at, ended_at, class_id, lesson_version_id")
+        .eq("host_teacher_id", appUserId)
         .order("started_at", { ascending: false })
         .limit(20),
-      supabase.from("classes").select("id, name, organization_id").order("created_at", { ascending: false }),
+      supabase.from("classes").select("id, name, organization_id").eq("teacher_id", appUserId).order("created_at", { ascending: false }),
       supabase.from("courses").select("id, title").order("title"),
       supabase.from("units").select("id, title, course_id").order("sequence_no"),
       supabase.from("lessons").select("id, title, unit_id").order("title"),
@@ -146,7 +148,8 @@ export default function LiveSessions() {
     await supabase
       .from("live_sessions")
       .update({ ended_at: new Date().toISOString() })
-      .eq("id", sessionId);
+      .eq("id", sessionId)
+      .eq("host_teacher_id", appUserId!);
     await loadData();
   }
 
