@@ -374,42 +374,41 @@ export default function TeacherLiveSession() {
   }
 
   // Aggregate poll/multi_select results - handles both {selected_option} and {answer} and {selected_options}
-  function getPollTallies(): { option: string; count: number }[] {
+  function getPollTallies(): { option: string; count: number; students: string[] }[] {
     const options = ((config.options as string[]) ?? []);
-    const tally: Record<string, number> = {};
-    options.forEach(o => { tally[o] = 0; });
+    const tally: Record<string, { count: number; students: string[] }> = {};
+    options.forEach(o => { tally[o] = { count: 0, students: [] }; });
     for (const r of liveResponses) {
       const payload = r.response_payload;
-      // Handle selected_option (from PollStep)
+      const name = getStudentName(r.user_id);
       if (payload.selected_option && typeof payload.selected_option === "string") {
-        tally[payload.selected_option] = (tally[payload.selected_option] ?? 0) + 1;
+        if (tally[payload.selected_option]) { tally[payload.selected_option].count++; tally[payload.selected_option].students.push(name); }
       }
-      // Handle selected_options array (from multi_select or PollMultiSelectStep)
       if (payload.selected_options && Array.isArray(payload.selected_options)) {
         for (const opt of payload.selected_options) {
-          if (typeof opt === "string") tally[opt] = (tally[opt] ?? 0) + 1;
+          if (typeof opt === "string" && tally[opt]) { tally[opt].count++; tally[opt].students.push(name); }
         }
       }
-      // Handle answer field (from student live view)
       if (!payload.selected_option && !payload.selected_options && payload.answer) {
-        if (typeof payload.answer === "string") tally[payload.answer] = (tally[payload.answer] ?? 0) + 1;
-        if (Array.isArray(payload.answer)) payload.answer.forEach((a: string) => { tally[a] = (tally[a] ?? 0) + 1; });
+        if (typeof payload.answer === "string" && tally[payload.answer]) { tally[payload.answer].count++; tally[payload.answer].students.push(name); }
+        if (Array.isArray(payload.answer)) payload.answer.forEach((a: string) => { if (tally[a]) { tally[a].count++; tally[a].students.push(name); } });
       }
     }
-    return options.map(o => ({ option: o, count: tally[o] ?? 0 }));
+    return options.map(o => ({ option: o, count: tally[o]?.count ?? 0, students: tally[o]?.students ?? [] }));
   }
 
   // Aggregate MCQ results
-  function getMcqTallies(): { option: string; count: number }[] {
+  function getMcqTallies(): { option: string; count: number; students: string[] }[] {
     const options = ((config.options as Array<{ id: string; text: string }>) ?? []);
-    const tally: Record<string, number> = {};
-    options.forEach(o => { tally[o.id] = 0; });
+    const tally: Record<string, { count: number; students: string[] }> = {};
+    options.forEach(o => { tally[o.id] = { count: 0, students: [] }; });
     for (const r of liveResponses) {
       const payload = r.response_payload;
       const ans = (payload.selected_option ?? payload.answer) as string;
-      if (ans && tally[ans] !== undefined) tally[ans]++;
+      const name = getStudentName(r.user_id);
+      if (ans && tally[ans]) { tally[ans].count++; tally[ans].students.push(name); }
     }
-    return options.map(o => ({ option: o.text, count: tally[o.id] ?? 0 }));
+    return options.map(o => ({ option: o.text, count: tally[o.id]?.count ?? 0, students: tally[o.id]?.students ?? [] }));
   }
 
   // Get text responses - handles various payload shapes
@@ -594,6 +593,9 @@ export default function TeacherLiveSession() {
                                 style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }}>
                               </div>
                             </div>
+                            {t.students.length > 0 && (
+                              <p className="text-xs text-muted-foreground pl-9">{t.students.join(", ")}</p>
+                            )}
                           </div>
                         );
                       })}
@@ -699,6 +701,9 @@ export default function TeacherLiveSession() {
                                 style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }}>
                               </div>
                             </div>
+                            {t.students.length > 0 && (
+                              <p className="text-xs text-muted-foreground pl-9">{t.students.join(", ")}</p>
+                            )}
                           </div>
                         );
                       })}
@@ -888,7 +893,162 @@ export default function TeacherLiveSession() {
                 </div>
               )}
 
-              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board", "group_board", "scenario", "dilemma_tree"].includes(step.block_type) && (
+              {step.block_type === "drag_drop" && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Drag & Drop"}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => {
+                        const p = r.response_payload as Record<string, unknown>;
+                        const placements = p.placements ?? p.answer ?? p.zones ?? {};
+                        return (
+                          <div key={i} className="rounded-xl border border-border bg-card p-4">
+                            <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.user_id)}</p>
+                            <p className="text-sm text-foreground">{typeof placements === "object" ? JSON.stringify(placements) : String(placements)}</p>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      🎯 {liveResponses.length} of {participants.length} sorting
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {step.block_type === "matching" && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Matching"}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => {
+                        const p = r.response_payload as Record<string, unknown>;
+                        const matches = p.matches ?? p.answer ?? {};
+                        const correct = p.correct_count as number | undefined;
+                        const total = p.total_count as number | undefined;
+                        return (
+                          <div key={i} className="rounded-xl border border-border bg-card p-4">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-primary font-bold">{getStudentName(r.user_id)}</span>
+                              {correct !== undefined && total !== undefined && (
+                                <span className="text-xs font-bold text-success">{correct}/{total} correct</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-foreground">{typeof matches === "object" ? Object.entries(matches as Record<string, string>).map(([k, v]) => `${k} → ${v}`).join(", ") : String(matches)}</p>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      🔗 {liveResponses.length} of {participants.length} matching
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {step.block_type === "drawing" && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Drawing"}</p>
+                  {showResults ? (
+                    <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => {
+                        const p = r.response_payload as Record<string, unknown>;
+                        const dataUrl = (p.drawing_data ?? p.image ?? p.data_url ?? "") as string;
+                        return (
+                          <div key={i} className="rounded-xl border border-border bg-card p-3">
+                            <p className="text-xs text-primary font-bold mb-2">{getStudentName(r.user_id)}</p>
+                            {dataUrl && dataUrl.startsWith("data:") ? (
+                              <img src={dataUrl} alt="Student drawing" className="w-full rounded-lg" />
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic">Drawing submitted</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      🎨 {liveResponses.length} of {participants.length} drawing
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {step.block_type === "red_team" && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.claim as string) ?? (config.prompt as string) ?? step.body ?? "Red Team Challenge"}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => {
+                        const p = r.response_payload as Record<string, unknown>;
+                        return (
+                          <div key={i} className="rounded-xl border border-border bg-card p-4">
+                            <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.user_id)}</p>
+                            <p className="text-sm text-foreground">{String(p.counter_argument ?? p.argument ?? p.text ?? "")}</p>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      🔴 {liveResponses.length} of {participants.length} challenging
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {step.block_type === "group_challenge" && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.challenge as string) ?? (config.prompt as string) ?? step.body ?? "Group Challenge"}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {getTextResponses().map((r, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.userId)}</p>
+                          <p className="text-sm text-foreground">{r.text}</p>
+                        </div>
+                      ))}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      🏆 {liveResponses.length} of {participants.length} collaborating
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {step.block_type === "peer_review" && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Peer Review"}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => {
+                        const p = r.response_payload as Record<string, unknown>;
+                        return (
+                          <div key={i} className="rounded-xl border border-border bg-card p-4">
+                            <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.user_id)}</p>
+                            {p.rating && <p className="text-xs text-muted-foreground mb-1">Rating: {"⭐".repeat(Number(p.rating))}</p>}
+                            <p className="text-sm text-foreground">{String(p.feedback ?? p.text ?? p.review ?? "")}</p>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} review{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      📖 {liveResponses.length} of {participants.length} reviewing
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board", "group_board", "scenario", "dilemma_tree", "drag_drop", "matching", "drawing", "red_team", "group_challenge", "peer_review"].includes(step.block_type) && (
                 <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
                   <span className="text-5xl">{getBlockIcon(step.block_type)}</span>
                   <p className="text-lg font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>

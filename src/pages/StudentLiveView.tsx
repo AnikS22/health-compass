@@ -505,11 +505,17 @@ export default function StudentLiveView() {
               <p className="text-sm text-muted-foreground">Wait for your teacher to unlock</p>
             </div>
           ) : submitted ? (
-            <div className="rounded-2xl border-2 border-success/20 bg-success/5 p-8 text-center space-y-3 animate-in fade-in duration-300">
-              <span className="text-4xl">✅</span>
-              <p className="text-success font-bold text-lg">Response submitted!</p>
+            <div className="space-y-4 animate-in fade-in duration-300">
+              <div className="rounded-2xl border-2 border-success/20 bg-success/5 p-6 text-center space-y-2">
+                <span className="text-3xl">✅</span>
+                <p className="text-success font-bold">Response submitted!</p>
+              </div>
               {revealedResults ? renderRevealedResults() : (
-                <p className="text-sm text-muted-foreground">Waiting for the class…</p>
+                (step?.block_type === "collaborative_board" || step?.block_type === "group_board") ? (
+                  <LiveBoardFeed sessionId={sessionId!} blockId={steps[activeIndex]?.id ?? ""} />
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center">Waiting for the class…</p>
+                )
               )}
             </div>
           ) : (
