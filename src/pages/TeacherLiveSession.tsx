@@ -14,7 +14,7 @@ import VideoEmbed from "@/components/VideoEmbed";
 import VideoCheckpointStep from "@/components/steps/VideoCheckpointStep";
 import type { VideoCheckpointConfig } from "@/components/steps/VideoCheckpointStep";
 
-type Participant = { id: string; display_name: string; joined_at: string };
+type Participant = { id: string; display_name: string; joined_at: string; user_id?: string };
 type LiveResponse = { id: string; user_id: string; response_payload: Record<string, unknown>; submitted_at: string };
 
 function getBlockIcon(type: string) {
@@ -28,13 +28,28 @@ function getBlockIcon(type: string) {
     case "scenario": return "🎭";
     case "debate": return "⚖️";
     case "exit_ticket": return "🎫";
+    case "dilemma_tree": return "🌳";
+    case "collaborative_board": case "group_board": return "📋";
+    case "short_answer": return "📝";
+    case "drag_drop": return "🎯";
+    case "matching": return "🔗";
+    case "drawing": return "🎨";
+    case "red_team": return "🔴";
+    case "group_challenge": return "🏆";
+    case "peer_review": return "📖";
     default: return "📝";
   }
 }
 
 function isInteractiveBlock(type: string, config?: Record<string, unknown>) {
   if (type === "video" && config && videoHasCheckpoints(config)) return true;
-  return ["micro_challenge", "reasoning_response", "peer_compare", "poll", "mcq", "multi_select", "short_answer", "debate", "exit_ticket", "scenario", "dilemma_tree", "concept_reveal"].includes(type);
+  return [
+    "micro_challenge", "reasoning_response", "peer_compare",
+    "poll", "mcq", "multi_select", "short_answer", "debate",
+    "exit_ticket", "scenario", "dilemma_tree",
+    "collaborative_board", "group_board", "group_challenge",
+    "peer_review", "drag_drop", "matching", "drawing", "red_team",
+  ].includes(type);
 }
 
 function videoHasCheckpoints(config: Record<string, unknown>): boolean {
@@ -62,6 +77,7 @@ export default function TeacherLiveSession() {
   const [responseCount, setResponseCount] = useState(0);
   const [liveResponses, setLiveResponses] = useState<LiveResponse[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [participantNames, setParticipantNames] = useState<Record<string, string>>({});
   const presentationRef = useRef<HTMLDivElement>(null);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
 
@@ -70,12 +86,10 @@ export default function TeacherLiveSession() {
     if (!sessionId) return;
     const channel = supabase.channel(`live-session-${sessionId}`);
     
-    // Listen for student responses
     channel.on("broadcast", { event: "student_response" }, () => {
       setResponseCount((c) => c + 1);
     });
 
-    // Listen for new participants
     channel.on("broadcast", { event: "student_joined" }, (payload) => {
       const p = payload.payload as Participant;
       setParticipants((prev) => {
@@ -172,21 +186,27 @@ export default function TeacherLiveSession() {
       if (lesson) setLessonTitle(lesson.title);
     }
 
-    const { data: parts } = await supabase.from("live_session_participants").select("id, display_name, joined_at").eq("live_session_id", sessionId);
-    if (parts) setParticipants(parts as Participant[]);
+    const { data: parts } = await supabase
+      .from("live_session_participants")
+      .select("id, display_name, joined_at, user_id")
+      .eq("live_session_id", sessionId);
+    if (parts) {
+      setParticipants(parts as Participant[]);
+      const nameMap: Record<string, string> = {};
+      parts.forEach((p: any) => { if (p.user_id) nameMap[p.user_id] = p.display_name; });
+      setParticipantNames(nameMap);
+    }
     setLoading(false);
   }
 
   // Broadcast an event to all students AND persist to DB
   function broadcast(eventType: string, payload: Record<string, unknown> = {}) {
-    // Broadcast via Realtime channel (instant)
     broadcastRef.current?.send({
       type: "broadcast",
       event: "teacher_event",
       payload: { event_type: eventType, ...payload },
     });
 
-    // Persist to DB (fire-and-forget, for replay on late joins)
     if (sessionId && appUserId) {
       supabase.from("live_session_events").insert([{
         live_session_id: sessionId, actor_user_id: appUserId,
@@ -244,7 +264,12 @@ export default function TeacherLiveSession() {
 
   async function handleEndSession() {
     if (!sessionId) return;
-    await supabase.from("live_sessions").update({ ended_at: new Date().toISOString() }).eq("id", sessionId);
+    // Use host_teacher_id filter to satisfy RLS policy
+    await supabase
+      .from("live_sessions")
+      .update({ ended_at: new Date().toISOString() })
+      .eq("id", sessionId)
+      .eq("host_teacher_id", appUserId!);
     broadcast("session_ended");
     navigate("/classes");
   }
@@ -343,20 +368,30 @@ export default function TeacherLiveSession() {
   const config = step?.config as Record<string, unknown>;
   const progress = steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
 
-  // Aggregate poll/multi_select results
+  // Helper to get student name from user_id
+  function getStudentName(userId: string): string {
+    return participantNames[userId] || "Student";
+  }
+
+  // Aggregate poll/multi_select results - handles both {selected_option} and {answer} and {selected_options}
   function getPollTallies(): { option: string; count: number }[] {
     const options = ((config.options as string[]) ?? []);
     const tally: Record<string, number> = {};
     options.forEach(o => { tally[o] = 0; });
     for (const r of liveResponses) {
       const payload = r.response_payload;
+      // Handle selected_option (from PollStep)
       if (payload.selected_option && typeof payload.selected_option === "string") {
         tally[payload.selected_option] = (tally[payload.selected_option] ?? 0) + 1;
       }
+      // Handle selected_options array (from multi_select or PollMultiSelectStep)
       if (payload.selected_options && Array.isArray(payload.selected_options)) {
-        for (const opt of payload.selected_options) tally[opt] = (tally[opt] ?? 0) + 1;
+        for (const opt of payload.selected_options) {
+          if (typeof opt === "string") tally[opt] = (tally[opt] ?? 0) + 1;
+        }
       }
-      if (payload.answer) {
+      // Handle answer field (from student live view)
+      if (!payload.selected_option && !payload.selected_options && payload.answer) {
         if (typeof payload.answer === "string") tally[payload.answer] = (tally[payload.answer] ?? 0) + 1;
         if (Array.isArray(payload.answer)) payload.answer.forEach((a: string) => { tally[a] = (tally[a] ?? 0) + 1; });
       }
@@ -377,19 +412,66 @@ export default function TeacherLiveSession() {
     return options.map(o => ({ option: o.text, count: tally[o.id] ?? 0 }));
   }
 
-  function getTextResponses(): string[] {
+  // Get text responses - handles various payload shapes
+  function getTextResponses(): { text: string; userId: string }[] {
     return liveResponses
-      .map(r => (r.response_payload.text ?? r.response_payload.answer ?? "") as string)
-      .filter(Boolean);
+      .map(r => {
+        const p = r.response_payload;
+        const text = (p.text ?? p.answer ?? p.argument ?? p.post ?? "") as string;
+        return { text, userId: r.user_id };
+      })
+      .filter(r => r.text.length > 0);
+  }
+
+  // Get scenario responses with choice info
+  function getScenarioResponses(): { choiceId: string; userId: string }[] {
+    return liveResponses.map(r => ({
+      choiceId: (r.response_payload.selected_choice_id ?? "") as string,
+      userId: r.user_id,
+    })).filter(r => r.choiceId.length > 0);
+  }
+
+  function getScenarioTallies(): { choice: string; count: number; students: string[] }[] {
+    const choices = ((config.choices as Array<{ id: string; text: string }>) ?? []);
+    const tally: Record<string, { count: number; students: string[] }> = {};
+    choices.forEach(c => { tally[c.id] = { count: 0, students: [] }; });
+    for (const r of getScenarioResponses()) {
+      if (tally[r.choiceId]) {
+        tally[r.choiceId].count++;
+        tally[r.choiceId].students.push(getStudentName(r.userId));
+      }
+    }
+    return choices.map(c => ({ choice: c.text, count: tally[c.id]?.count ?? 0, students: tally[c.id]?.students ?? [] }));
+  }
+
+  // Get collaborative board posts
+  function getBoardPosts(): { text: string; userId: string }[] {
+    const posts: { text: string; userId: string }[] = [];
+    for (const r of liveResponses) {
+      const p = r.response_payload;
+      if (Array.isArray(p.posts)) {
+        for (const post of p.posts) {
+          posts.push({ text: String(post), userId: r.user_id });
+        }
+      } else if (p.text || p.post) {
+        posts.push({ text: String(p.text ?? p.post ?? ""), userId: r.user_id });
+      }
+    }
+    return posts.filter(p => p.text.length > 0);
   }
 
   function handleRevealResults() {
     setShowResults(true);
+    const bt = step?.block_type ?? "";
     broadcast("reveal_results", {
       block_id: step?.id,
-      tallies: (step?.block_type === "poll" || step?.block_type === "multi_select") ? getPollTallies() : undefined,
-      mcq_tallies: (step?.block_type === "micro_challenge" || (step?.block_type as string) === "mcq") ? getMcqTallies() : undefined,
-      text_responses: ["short_answer", "reasoning_response", "exit_ticket"].includes(step?.block_type ?? "") ? getTextResponses().slice(0, 20) : undefined,
+      tallies: (bt === "poll" || bt === "multi_select") ? getPollTallies() : undefined,
+      mcq_tallies: (bt === "micro_challenge" || bt === "mcq") ? getMcqTallies() : undefined,
+      text_responses: ["short_answer", "reasoning_response", "exit_ticket", "debate"].includes(bt)
+        ? getTextResponses().slice(0, 30).map(r => r.text)
+        : undefined,
+      scenario_tallies: bt === "scenario" ? getScenarioTallies() : undefined,
+      board_posts: (bt === "collaborative_board" || bt === "group_board") ? getBoardPosts().map(p => p.text) : undefined,
       response_count: liveResponses.length,
     });
   }
@@ -544,9 +626,10 @@ export default function TeacherLiveSession() {
                   <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? ""}</p>
                   {showResults ? (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {getTextResponses().map((text, i) => (
+                      {getTextResponses().map((r, i) => (
                         <div key={i} className="rounded-xl border border-border bg-card p-4">
-                          <p className="text-sm text-foreground">{text}</p>
+                          <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.userId)}</p>
+                          <p className="text-sm text-foreground">{r.text}</p>
                         </div>
                       ))}
                       <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
@@ -562,23 +645,36 @@ export default function TeacherLiveSession() {
               {step.block_type === "peer_compare" && (
                 <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? ""}</p>
-                  {((config.options as Array<{ id: string; text: string }>) ?? []).length > 0 && (
-                    <div className="grid grid-cols-2 gap-3">
-                      {((config.options as Array<{ id: string; text: string }>) ?? []).map((opt, i) => (
-                        <div key={opt.id} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3">
-                          <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                            {String.fromCharCode(65 + i)}
-                          </span>
-                          <span className="text-foreground font-medium">{opt.text}</span>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {getTextResponses().map((r, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.userId)}</p>
+                          <p className="text-sm text-foreground">{r.text}</p>
                         </div>
                       ))}
                     </div>
+                  ) : (
+                    <>
+                      {((config.options as Array<{ id: string; text: string }>) ?? []).length > 0 && (
+                        <div className="grid grid-cols-2 gap-3">
+                          {((config.options as Array<{ id: string; text: string }>) ?? []).map((opt, i) => (
+                            <div key={opt.id} className="rounded-2xl border-2 border-border bg-card p-5 flex items-center gap-3">
+                              <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                                {String.fromCharCode(65 + i)}
+                              </span>
+                              <span className="text-foreground font-medium">{opt.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 justify-center pt-2">
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                          👥 {liveResponses.length} of {participants.length} shared
+                        </span>
+                      </div>
+                    </>
                   )}
-                  <div className="flex items-center gap-2 justify-center pt-2">
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                      👥 {liveResponses.length} of {participants.length} shared
-                    </span>
-                  </div>
                 </div>
               )}
 
@@ -635,9 +731,10 @@ export default function TeacherLiveSession() {
                   <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? ""}</p>
                   {showResults ? (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {getTextResponses().map((text, i) => (
+                      {getTextResponses().map((r, i) => (
                         <div key={i} className="rounded-xl border border-border bg-card p-4">
-                          <p className="text-sm text-foreground">{text}</p>
+                          <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.userId)}</p>
+                          <p className="text-sm text-foreground">{r.text}</p>
                         </div>
                       ))}
                       <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
@@ -652,12 +749,13 @@ export default function TeacherLiveSession() {
 
               {step.block_type === "exit_ticket" && (
                 <div className="space-y-4">
-                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Exit Ticket"}</p>
+                  <p className="text-2xl font-bold text-foreground">{(config.question ?? config.prompt ?? step.body ?? "Exit Ticket") as string}</p>
                   {showResults ? (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {getTextResponses().map((text, i) => (
+                      {getTextResponses().map((r, i) => (
                         <div key={i} className="rounded-xl border border-border bg-card p-4">
-                          <p className="text-sm text-foreground">{text}</p>
+                          <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.userId)}</p>
+                          <p className="text-sm text-foreground">{r.text}</p>
                         </div>
                       ))}
                       <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
@@ -666,6 +764,55 @@ export default function TeacherLiveSession() {
                     <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
                       🎫 {liveResponses.length} of {participants.length} submitted
                     </span>
+                  )}
+                </div>
+              )}
+
+              {step.block_type === "scenario" && (
+                <div className="space-y-4">
+                  <div className="bg-card border border-border rounded-xl p-5">
+                    <p className="text-lg text-foreground">{(config.description as string) ?? ""}</p>
+                  </div>
+                  {showResults ? (
+                    <div className="space-y-3">
+                      {getScenarioTallies().map((t, i) => {
+                        const maxCount = Math.max(...getScenarioTallies().map(x => x.count), 1);
+                        return (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-foreground">{t.choice}</span>
+                              <span className="font-bold text-foreground">{t.count}</span>
+                            </div>
+                            <div className="h-8 bg-secondary rounded-xl overflow-hidden">
+                              <div className="h-full bg-primary/80 rounded-xl transition-all duration-700 ease-out"
+                                style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }} />
+                            </div>
+                            {t.students.length > 0 && (
+                              <p className="text-xs text-muted-foreground pl-1">{t.students.join(", ")}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        {((config.choices as Array<{ id: string; text: string }>) ?? []).map((c, i) => (
+                          <div key={c.id} className="rounded-xl border-2 border-border bg-card p-4 flex items-center gap-3">
+                            <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                              {String.fromCharCode(65 + i)}
+                            </span>
+                            <span className="text-foreground font-medium">{c.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2 justify-center pt-2">
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                          🎭 {liveResponses.length} of {participants.length} chose
+                        </span>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -679,8 +826,11 @@ export default function TeacherLiveSession() {
                         const p = r.response_payload as Record<string, unknown>;
                         return (
                           <div key={i} className="rounded-xl border border-border bg-card p-4">
-                            {p.position ? <span className="text-xs font-bold text-primary uppercase">{String(p.position)}</span> : null}
-                            <p className="text-sm text-foreground mt-1">{String(p.argument ?? p.text ?? "")}</p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs text-primary font-bold">{getStudentName(r.user_id)}</span>
+                              {p.position ? <span className="text-xs font-bold text-muted-foreground uppercase bg-secondary px-2 py-0.5 rounded">{String(p.position)}</span> : null}
+                            </div>
+                            <p className="text-sm text-foreground">{String(p.argument ?? p.text ?? "")}</p>
                           </div>
                         );
                       })}
@@ -696,12 +846,13 @@ export default function TeacherLiveSession() {
 
               {(step.block_type === "collaborative_board" || step.block_type === "group_board") && (
                 <div className="space-y-4">
-                  <p className="text-2xl font-bold text-foreground">{step.body ?? "Share your ideas"}</p>
+                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Share your ideas"}</p>
                   {showResults ? (
                     <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-                      {liveResponses.map((r, i) => (
+                      {getBoardPosts().map((post, i) => (
                         <div key={i} className="rounded-xl border border-border bg-card p-4">
-                          <p className="text-sm text-foreground">{String(r.response_payload.text ?? r.response_payload.post ?? "")}</p>
+                          <p className="text-xs text-primary font-bold mb-1">{getStudentName(post.userId)}</p>
+                          <p className="text-sm text-foreground">{post.text}</p>
                         </div>
                       ))}
                     </div>
@@ -713,13 +864,48 @@ export default function TeacherLiveSession() {
                 </div>
               )}
 
-              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board", "group_board"].includes(step.block_type) && (
+              {step.block_type === "dilemma_tree" && (
+                <div className="space-y-4">
+                  <p className="text-2xl font-bold text-foreground">{(config.root_question as string) ?? ""}</p>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {liveResponses.map((r, i) => {
+                        const p = r.response_payload as Record<string, unknown>;
+                        return (
+                          <div key={i} className="rounded-xl border border-border bg-card p-4">
+                            <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.user_id)}</p>
+                            <p className="text-sm text-foreground">Path: {Array.isArray(p.path) ? (p.path as string[]).join(" → ") : "—"}</p>
+                          </div>
+                        );
+                      })}
+                      <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      🌳 {liveResponses.length} of {participants.length} exploring
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board", "group_board", "scenario", "dilemma_tree"].includes(step.block_type) && (
                 <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
                   <span className="text-5xl">{getBlockIcon(step.block_type)}</span>
                   <p className="text-lg font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
-                    📱 {liveResponses.length} of {participants.length} responded
-                  </span>
+                  {showResults ? (
+                    <div className="space-y-3 max-h-96 overflow-y-auto text-left">
+                      {getTextResponses().map((r, i) => (
+                        <div key={i} className="rounded-xl border border-border bg-card p-4">
+                          <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.userId)}</p>
+                          <p className="text-sm text-foreground">{r.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold animate-pulse">
+                      📱 {liveResponses.length} of {participants.length} responded
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -771,6 +957,31 @@ export default function TeacherLiveSession() {
               </button>
             )}
           </div>
+
+          {/* Response details sidebar */}
+          {isInteractive && liveResponses.length > 0 && (
+            <div className="p-3 border-b border-border max-h-48 overflow-y-auto">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1 mb-2">
+                Responses ({liveResponses.length})
+              </p>
+              <div className="space-y-1">
+                {liveResponses.slice(0, 20).map((r) => {
+                  const p = r.response_payload;
+                  const preview = String(
+                    p.selected_option ?? p.answer ?? p.text ?? p.argument ?? p.selected_choice_id ?? p.emoji ?? "✓"
+                  ).slice(0, 40);
+                  return (
+                    <div key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/50 text-xs">
+                      <span className="font-semibold text-foreground truncate max-w-[80px]">
+                        {getStudentName(r.user_id)}
+                      </span>
+                      <span className="text-muted-foreground truncate flex-1">{preview}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Step list */}
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
