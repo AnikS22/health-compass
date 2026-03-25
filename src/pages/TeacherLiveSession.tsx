@@ -1033,7 +1033,7 @@ export default function TeacherLiveSession() {
                         return (
                           <div key={i} className="rounded-xl border border-border bg-card p-4">
                             <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.user_id)}</p>
-                            {p.rating && <p className="text-xs text-muted-foreground mb-1">Rating: {"⭐".repeat(Number(p.rating))}</p>}
+                            {p.rating && <p className="text-xs text-muted-foreground mb-1">Rating: {"⭐".repeat(Number(p.rating) || 0)}</p>}
                             <p className="text-sm text-foreground">{String(p.feedback ?? p.text ?? p.review ?? "")}</p>
                           </div>
                         );
