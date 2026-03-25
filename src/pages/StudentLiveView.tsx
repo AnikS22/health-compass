@@ -33,6 +33,8 @@ import DrawingStep from "../components/steps/DrawingStep";
 import type { DrawingConfig } from "../components/steps/DrawingStep";
 import RedTeamStep from "../components/steps/RedTeamStep";
 import type { RedTeamConfig } from "../components/steps/RedTeamStep";
+import PollStep from "../components/steps/PollStep";
+import type { PollConfig } from "../components/steps/PollStep";
 import type {
   ConceptRevealConfig, MicroChallengeConfig,
   ReasoningResponseConfig, PeerCompareConfig,
@@ -45,58 +47,23 @@ function videoHasCheckpoints(config: Record<string, unknown>): boolean {
   return Array.isArray(config.checkpoints) && config.checkpoints.length > 0;
 }
 
+// Blocks where the student actually responds
 function isInteractiveBlock(type: string, config?: Record<string, unknown>) {
   if (type === "video" && config && videoHasCheckpoints(config)) return true;
   return [
     "micro_challenge", "reasoning_response", "peer_compare",
     "poll", "mcq", "multi_select", "short_answer", "debate",
-    "exit_ticket", "scenario", "dilemma_tree", "concept_reveal",
+    "exit_ticket", "scenario", "dilemma_tree",
     "collaborative_board", "group_board", "group_challenge",
     "peer_review", "drag_drop", "matching", "drawing", "red_team",
   ].includes(type);
 }
 
-function PollMultiSelectStep({ options, isMulti, body, onComplete }: {
-  options: string[]; isMulti: boolean; body: string | null;
-  onComplete: (r: StepResponse) => void;
-}) {
-  const [selected, setSelected] = useState<string[]>([]);
-  const toggle = (opt: string) => {
-    if (isMulti) {
-      setSelected(prev => prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]);
-    } else {
-      setSelected([opt]);
-    }
-  };
-  return (
-    <div className="space-y-4">
-      {body && <p className="text-lg text-foreground">{body}</p>}
-      <div className="space-y-2">
-        {options.map((opt, i) => (
-          <button key={i} type="button" onClick={() => toggle(opt)}
-            className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all text-sm font-medium ${
-              selected.includes(opt)
-                ? "border-primary bg-primary/10 text-foreground"
-                : "border-border bg-card text-foreground hover:border-primary/30"
-            }`}>
-            <span className="flex items-center gap-3">
-              <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                selected.includes(opt) ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
-              }`}>{String.fromCharCode(65 + i)}</span>
-              {opt}
-            </span>
-          </button>
-        ))}
-      </div>
-      <button
-        onClick={() => onComplete({ selected_options: selected, answer: isMulti ? selected : selected[0] })}
-        disabled={selected.length === 0}
-        className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-      >
-        Submit {isMulti ? `(${selected.length} selected)` : ""}
-      </button>
-    </div>
-  );
+// Blocks that are display-only (no student submission needed)
+function isDisplayOnlyBlock(type: string, config?: Record<string, unknown>) {
+  if (type === "concept_reveal") return true;
+  if (type === "video" && (!config || !videoHasCheckpoints(config))) return true;
+  return false;
 }
 
 export default function StudentLiveView() {
@@ -330,10 +297,11 @@ export default function StudentLiveView() {
   // ---------- ACTIVE SESSION ----------
   const step = steps[activeIndex];
   const isInteractive = step ? isInteractiveBlock(step.block_type, step.config) : false;
+  const isDisplayOnly = step ? isDisplayOnlyBlock(step.block_type, step.config) : false;
   const progress = steps.length > 0 ? ((activeIndex + 1) / steps.length) * 100 : 0;
 
   // ---------- LOOK UP SCREEN ----------
-  if (step && !isInteractive) {
+  if (step && !isInteractive && !isDisplayOnly) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <div className="border-b border-border bg-card px-4 py-2 flex items-center justify-between shrink-0">
@@ -380,7 +348,125 @@ export default function StudentLiveView() {
     );
   }
 
+  // ---------- DISPLAY-ONLY BLOCK (concept_reveal, plain video) ----------
+  // Show the actual content to the student instead of "Look Up" or "Submitted"
+  if (step && isDisplayOnly) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <div className="border-b border-border bg-card px-4 py-2 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <Radio className="w-3.5 h-3.5 text-success animate-pulse" />
+            <span className="text-sm font-semibold text-foreground truncate">{lessonTitle}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">Step {activeIndex + 1}/{steps.length}</span>
+        </div>
+        <div className="h-1 bg-secondary"><div className="h-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} /></div>
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-lg mx-auto px-4 py-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold mb-3">
+                <Eye className="w-4 h-4" />
+                Follow Along
+              </div>
+              {step.title && (
+                <h2 className="text-xl font-extrabold text-foreground">{step.title}</h2>
+              )}
+            </div>
+
+            {step.block_type === "concept_reveal" && (
+              <ConceptRevealStep
+                config={step.config as unknown as ConceptRevealConfig}
+                body={step.body}
+                onComplete={() => {}}
+              />
+            )}
+
+            {step.block_type === "video" && (
+              <VideoCheckpointStep
+                config={step.config as unknown as VideoCheckpointConfig}
+                body={step.body}
+                onComplete={() => {}}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ---------- INTERACTIVE STEP ----------
+  // Render results from reveal
+  function renderRevealedResults() {
+    if (!revealedResults) return null;
+    return (
+      <div className="mt-4 text-left space-y-3">
+        <p className="text-sm font-bold text-foreground text-center">📊 Class Results</p>
+        {Array.isArray(revealedResults.tallies) && (revealedResults.tallies as Array<{ option: string; count: number }>).map((t, i) => {
+          const maxC = Math.max(...(revealedResults.tallies as Array<{ option: string; count: number }>).map(x => x.count), 1);
+          return (
+            <div key={i} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-foreground">{t.option}</span>
+                <span className="font-bold text-foreground">{t.count}</span>
+              </div>
+              <div className="h-5 bg-secondary rounded-lg overflow-hidden">
+                <div className="h-full bg-primary/70 rounded-lg transition-all duration-700" style={{ width: `${Math.max((t.count / maxC) * 100, 3)}%` }} />
+              </div>
+            </div>
+          );
+        })}
+        {Array.isArray(revealedResults.mcq_tallies) && (revealedResults.mcq_tallies as Array<{ option: string; count: number }>).map((t, i) => {
+          const maxC = Math.max(...(revealedResults.mcq_tallies as Array<{ option: string; count: number }>).map(x => x.count), 1);
+          return (
+            <div key={i} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-foreground">{t.option}</span>
+                <span className="font-bold text-foreground">{t.count}</span>
+              </div>
+              <div className="h-5 bg-secondary rounded-lg overflow-hidden">
+                <div className="h-full bg-primary/70 rounded-lg transition-all duration-700" style={{ width: `${Math.max((t.count / maxC) * 100, 3)}%` }} />
+              </div>
+            </div>
+          );
+        })}
+        {Array.isArray(revealedResults.scenario_tallies) && (revealedResults.scenario_tallies as Array<{ choice: string; count: number }>).map((t, i) => {
+          const maxC = Math.max(...(revealedResults.scenario_tallies as Array<{ choice: string; count: number }>).map(x => x.count), 1);
+          return (
+            <div key={i} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-foreground">{t.choice}</span>
+                <span className="font-bold text-foreground">{t.count}</span>
+              </div>
+              <div className="h-5 bg-secondary rounded-lg overflow-hidden">
+                <div className="h-full bg-primary/70 rounded-lg transition-all duration-700" style={{ width: `${Math.max((t.count / maxC) * 100, 3)}%` }} />
+              </div>
+            </div>
+          );
+        })}
+        {Array.isArray(revealedResults.text_responses) && (
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {(revealedResults.text_responses as string[]).map((text, i) => (
+              <div key={i} className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xs text-foreground">{text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {Array.isArray(revealedResults.board_posts) && (
+          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+            {(revealedResults.board_posts as string[]).map((post, i) => (
+              <div key={i} className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xs text-foreground">{post}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground text-center">{String(revealedResults.response_count ?? "")} total responses</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <div className="border-b border-border bg-card px-4 py-2 flex items-center justify-between shrink-0">
@@ -422,49 +508,7 @@ export default function StudentLiveView() {
             <div className="rounded-2xl border-2 border-success/20 bg-success/5 p-8 text-center space-y-3 animate-in fade-in duration-300">
               <span className="text-4xl">✅</span>
               <p className="text-success font-bold text-lg">Response submitted!</p>
-              {revealedResults ? (
-                <div className="mt-4 text-left space-y-3">
-                  <p className="text-sm font-bold text-foreground text-center">📊 Class Results</p>
-                  {Array.isArray(revealedResults.tallies) && (revealedResults.tallies as Array<{ option: string; count: number }>).map((t, i) => {
-                    const maxC = Math.max(...(revealedResults.tallies as Array<{ option: string; count: number }>).map(x => x.count), 1);
-                    return (
-                      <div key={i} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-medium text-foreground">{t.option}</span>
-                          <span className="font-bold text-foreground">{t.count}</span>
-                        </div>
-                        <div className="h-5 bg-secondary rounded-lg overflow-hidden">
-                          <div className="h-full bg-primary/70 rounded-lg transition-all duration-700" style={{ width: `${Math.max((t.count / maxC) * 100, 3)}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {Array.isArray(revealedResults.mcq_tallies) && (revealedResults.mcq_tallies as Array<{ option: string; count: number }>).map((t, i) => {
-                    const maxC = Math.max(...(revealedResults.mcq_tallies as Array<{ option: string; count: number }>).map(x => x.count), 1);
-                    return (
-                      <div key={i} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-medium text-foreground">{t.option}</span>
-                          <span className="font-bold text-foreground">{t.count}</span>
-                        </div>
-                        <div className="h-5 bg-secondary rounded-lg overflow-hidden">
-                          <div className="h-full bg-primary/70 rounded-lg transition-all duration-700" style={{ width: `${Math.max((t.count / maxC) * 100, 3)}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {Array.isArray(revealedResults.text_responses) && (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {(revealedResults.text_responses as string[]).map((text, i) => (
-                        <div key={i} className="rounded-lg border border-border bg-card p-3">
-                          <p className="text-xs text-foreground">{text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-xs text-muted-foreground text-center">{String(revealedResults.response_count ?? "")} total responses</p>
-                </div>
-              ) : (
+              {revealedResults ? renderRevealedResults() : (
                 <p className="text-sm text-muted-foreground">Waiting for the class…</p>
               )}
             </div>
@@ -476,13 +520,6 @@ export default function StudentLiveView() {
                   body={step.body}
                   onComplete={(r) => handleStepComplete(r)}
                   isLive
-                />
-              )}
-              {step?.block_type === "concept_reveal" && (
-                <ConceptRevealStep
-                  config={step.config as unknown as ConceptRevealConfig}
-                  body={step.body}
-                  onComplete={() => handleStepComplete()}
                 />
               )}
               {(step?.block_type === "micro_challenge" || (step?.block_type as string) === "mcq") && (
@@ -506,10 +543,9 @@ export default function StudentLiveView() {
                 />
               )}
               {(step?.block_type === "poll" || step?.block_type === "multi_select") && (
-                <PollMultiSelectStep
+                <PollStep
                   key={step.id}
-                  options={Array.isArray((step.config as any).options) ? (step.config as any).options : []}
-                  isMulti={step.block_type === "multi_select"}
+                  config={step.config as unknown as PollConfig}
                   body={step.body}
                   onComplete={(r) => handleStepComplete(r)}
                 />
