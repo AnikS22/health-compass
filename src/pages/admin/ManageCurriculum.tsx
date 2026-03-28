@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   BookOpen, ChevronRight, Plus, Trash2, Save, X, Play,
   Layers, FileText, Video, HelpCircle, MessageSquare,
-  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle, Upload
+  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle, Upload, Download
 } from "lucide-react";
+import { downloadAIReference } from "@/lib/aiBlockReference";
 
 type Pkg = { id: string; package_key: string; title: string };
 type Course = { id: string; title: string; grade_band: string; curriculum_package_id: string | null };
