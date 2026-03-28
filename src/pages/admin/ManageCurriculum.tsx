@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   BookOpen, ChevronRight, Plus, Trash2, Save, X, Play,
   Layers, FileText, Video, HelpCircle, MessageSquare,
-  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle, Upload
+  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle, Upload, Download
 } from "lucide-react";
+import { downloadAIReference } from "@/lib/aiBlockReference";
 
 type Pkg = { id: string; package_key: string; title: string };
 type Course = { id: string; title: string; grade_band: string; curriculum_package_id: string | null };
@@ -1379,6 +1380,10 @@ export default function ManageCurriculum() {
                     {importing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />} Import JSON
                   </button>
                   <input ref={importFileRef} type="file" accept=".json,application/json" onChange={handleImportLesson} className="hidden" />
+                  <button onClick={downloadAIReference}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-accent/10 text-accent rounded-lg text-xs font-bold hover:bg-accent/20">
+                    <Download className="w-3 h-3" /> AI Reference
+                  </button>
                 </div>
               </div>
 
