@@ -1385,7 +1385,6 @@ export default function ManageCurriculum() {
                     <Download className="w-3 h-3" /> AI Reference
                   </button>
                 </div>
-                </div>
               </div>
 
               {showCreateUnit && (
