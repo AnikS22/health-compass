@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Radio, Play, Square, Users, Clock, Eye, Plus, Copy, Check, History } from "lucide-react";
+import { Radio, Play, Square, Users, Clock, Eye, Plus, Copy, Check, History, Trash2, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ type LiveSession = {
   ended_at: string | null;
   class_id: string;
   lesson_version_id: string;
+  custom_name: string | null;
 };
 
 type ClassRow = { id: string; name: string; organization_id: string };
@@ -37,6 +38,9 @@ export default function LiveSessions() {
   const [lessonVersionId, setLessonVersionId] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [renamingSession, setRenamingSession] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deletingSession, setDeletingSession] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -47,7 +51,7 @@ export default function LiveSessions() {
     const [sessRes, classRes, courseRes, unitRes, lessonRes, versionRes] = await Promise.all([
       supabase
         .from("live_sessions")
-        .select("id, session_code, started_at, ended_at, class_id, lesson_version_id")
+        .select("id, session_code, started_at, ended_at, class_id, lesson_version_id, custom_name")
         .eq("host_teacher_id", appUserId)
         .order("started_at", { ascending: false })
         .limit(50),
@@ -149,6 +153,29 @@ export default function LiveSessions() {
       .update({ ended_at: new Date().toISOString() })
       .eq("id", sessionId)
       .eq("host_teacher_id", appUserId!);
+    await loadData();
+  }
+
+  async function renameSession(sessionId: string, name: string) {
+    await supabase
+      .from("live_sessions")
+      .update({ custom_name: name || null })
+      .eq("id", sessionId)
+      .eq("host_teacher_id", appUserId!);
+    setRenamingSession(null);
+    setRenameValue("");
+    await loadData();
+  }
+
+  async function deleteSession(sessionId: string) {
+    // Delete related data first, then the session
+    await Promise.all([
+      supabase.from("live_responses").delete().eq("live_session_id", sessionId),
+      supabase.from("live_session_events").delete().eq("live_session_id", sessionId),
+      supabase.from("live_session_participants").delete().eq("live_session_id", sessionId),
+    ]);
+    await supabase.from("live_sessions").delete().eq("id", sessionId).eq("host_teacher_id", appUserId!);
+    setDeletingSession(null);
     await loadData();
   }
 
@@ -356,7 +383,11 @@ export default function LiveSessions() {
                   <p className="text-sm text-muted-foreground">No past sessions yet. Ended sessions will appear here with collected response data.</p>
                 </div>
               ) : (
-                pastSessions.map((s) => (
+                pastSessions.map((s) => {
+                  const ver = versions.find(v => v.id === s.lesson_version_id);
+                  const lesson = ver ? lessons.find(l => l.id === ver.lesson_id) : null;
+                  const displayName = s.custom_name || lesson?.title || "Untitled Lesson";
+                  return (
                   <div key={s.id} className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 group">
                     <div className="flex items-center justify-between">
                       <div className="flex items-start gap-4">
@@ -364,28 +395,72 @@ export default function LiveSessions() {
                           <Square className="w-5 h-5 text-muted-foreground" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
-                            {(() => { const ver = versions.find(v => v.id === s.lesson_version_id); const lesson = ver ? lessons.find(l => l.id === ver.lesson_id) : null; return lesson?.title ?? "Untitled Lesson"; })()}
-                          </h3>
+                          {renamingSession === s.id ? (
+                            <form onSubmit={(e) => { e.preventDefault(); renameSession(s.id, renameValue); }} className="flex items-center gap-2">
+                              <input
+                                autoFocus
+                                value={renameValue}
+                                onChange={(e) => setRenameValue(e.target.value)}
+                                placeholder={lesson?.title || "Session name"}
+                                className="px-3 py-1.5 border border-input rounded-lg text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-ring/50 w-64"
+                              />
+                              <button type="submit" className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold">Save</button>
+                              <button type="button" onClick={() => setRenamingSession(null)} className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted-foreground">Cancel</button>
+                            </form>
+                          ) : (
+                            <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                              {displayName}
+                              {s.custom_name && <span className="text-xs text-muted-foreground font-normal ml-2">({lesson?.title})</span>}
+                            </h3>
+                          )}
                           <div className="flex items-center gap-2 mt-1">
                             <span className="font-mono font-bold text-sm text-muted-foreground bg-secondary px-2 py-0.5 rounded">{s.session_code}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
                         <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="w-4 h-4" />{new Date(s.started_at).toLocaleString()}</span>
-                        <span className="text-xs px-3 py-1 rounded-full font-bold bg-secondary text-muted-foreground">ended</span>
+                        <button
+                          onClick={() => { setRenamingSession(s.id); setRenameValue(s.custom_name || ""); }}
+                          className="p-2 rounded-lg hover:bg-secondary transition-colors" title="Rename session"
+                        >
+                          <Pencil className="w-4 h-4 text-muted-foreground" />
+                        </button>
                         <button
                           onClick={() => navigate(`/live/review?session=${s.id}`)}
                           className="px-4 py-2 bg-primary/10 text-primary border border-primary/30 rounded-xl text-sm font-bold hover:bg-primary/20 transition-colors flex items-center gap-1.5"
                         >
                           <Eye className="w-4 h-4" />
-                          Review Data
+                          Review
                         </button>
+                        {deletingSession === s.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => deleteSession(s.id)}
+                              className="px-3 py-2 bg-destructive text-destructive-foreground rounded-xl text-xs font-bold hover:opacity-90 transition-opacity"
+                            >
+                              Confirm Delete
+                            </button>
+                            <button
+                              onClick={() => setDeletingSession(null)}
+                              className="px-3 py-2 border border-border rounded-xl text-xs font-semibold text-muted-foreground hover:bg-secondary transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeletingSession(s.id)}
+                            className="p-2 rounded-lg hover:bg-destructive/10 transition-colors" title="Delete session"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </>
