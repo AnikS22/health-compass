@@ -1207,6 +1207,24 @@ export default function TeacherLiveSession() {
               </p>
             </div>
           )}
+
+          {/* Speaker Notes Panel */}
+          {showNotesPanel && (
+            <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border p-4 z-10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <StickyNote className="w-3.5 h-3.5" /> Speaker Notes
+                </span>
+                <span className="text-[10px] text-muted-foreground">Only visible to you</span>
+              </div>
+              <textarea
+                value={speakerNotes}
+                onChange={(e) => setSpeakerNotes(e.target.value)}
+                placeholder="Add your speaker notes here… (only you can see these)"
+                className="w-full h-24 bg-secondary/50 border border-border rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring/50"
+              />
+            </div>
+          )}
         </div>
 
         {/* Right sidebar controls */}
