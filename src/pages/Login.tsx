@@ -182,6 +182,17 @@ export default function Login() {
           </button>
         </form>
 
+        <div className="relative flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted-foreground font-medium">or</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        <button onClick={handleGoogleSignIn} disabled={loading}
+          className="w-full flex items-center justify-center gap-3 py-3 bg-card border border-border rounded-xl text-sm font-bold text-foreground hover:bg-accent/50 transition-all disabled:opacity-50 shadow-sm">
+          <GoogleIcon />
+          {mode === "signin" ? "Sign in with Google" : "Sign up with Google"}
+        </button>
 
 
         {status && (
