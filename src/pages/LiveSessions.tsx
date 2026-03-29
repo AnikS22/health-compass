@@ -294,107 +294,103 @@ export default function LiveSessions() {
         </div>
       )}
 
-      {/* Sessions List */}
-      {sessions.length === 0 ? (
-        <div className="bg-card rounded-2xl border border-border p-12 text-center">
-          <Radio className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-foreground font-semibold">No sessions yet</p>
-          <p className="text-sm text-muted-foreground mt-1">Start your first live session to engage students in real time.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {sessions.map((s) => {
-            const status = getStatus(s);
-            return (
-              <div
-                key={s.id}
-                className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-start gap-4">
-                    <div
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                        status === "active" ? "bg-success/10" : "bg-secondary"
-                      }`}
-                    >
-                      {status === "active" ? (
-                        <Radio className="w-5 h-5 text-success animate-pulse" />
-                      ) : (
-                        <Square className="w-5 h-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
-                        {(() => {
-                          const ver = versions.find(v => v.id === s.lesson_version_id);
-                          const lesson = ver ? lessons.find(l => l.id === ver.lesson_id) : null;
-                          return lesson?.title ?? "Untitled Lesson";
-                        })()}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="font-mono font-bold text-lg text-foreground bg-secondary px-3 py-1 rounded-lg">
-                          {s.session_code}
-                        </span>
-                        <button
-                          onClick={() => copyCode(s.session_code)}
-                          className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
-                          title="Copy code"
-                        >
-                          {copiedCode === s.session_code ? (
-                            <Check className="w-4 h-4 text-success" />
-                          ) : (
-                            <Copy className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </button>
+      {/* Active Sessions */}
+      {(() => {
+        const activeSessions = sessions.filter(s => !s.ended_at);
+        const pastSessions = sessions.filter(s => s.ended_at);
+        return (
+          <>
+            {activeSessions.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-success animate-pulse" /> Active Sessions
+                </h2>
+                {activeSessions.map((s) => (
+                  <div key={s.id} className="bg-card rounded-2xl border border-success/30 p-6 hover:shadow-lg transition-all duration-300 group">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-success/10">
+                          <Radio className="w-5 h-5 text-success animate-pulse" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                            {(() => { const ver = versions.find(v => v.id === s.lesson_version_id); const lesson = ver ? lessons.find(l => l.id === ver.lesson_id) : null; return lesson?.title ?? "Untitled Lesson"; })()}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="font-mono font-bold text-lg text-foreground bg-secondary px-3 py-1 rounded-lg">{s.session_code}</span>
+                            <button onClick={() => copyCode(s.session_code)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Copy code">
+                              {copiedCode === s.session_code ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="w-4 h-4" />{new Date(s.started_at).toLocaleString()}</span>
+                        <span className="text-xs px-3 py-1 rounded-full font-bold bg-success/10 text-success">active</span>
+                        <div className="flex gap-2">
+                          <button onClick={() => navigate(`/live/host?session=${s.id}`)} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+                            <Play className="w-4 h-4 inline mr-1" />Host
+                          </button>
+                          <button onClick={() => endSession(s.id)} className="px-4 py-2 border border-destructive/30 text-destructive rounded-xl text-sm font-semibold hover:bg-destructive/5 transition-colors">End</button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                      <Clock className="w-4 h-4" />
-                      {new Date(s.started_at).toLocaleString()}
-                    </span>
-                    <span
-                      className={`text-xs px-3 py-1 rounded-full font-bold ${
-                        status === "active"
-                          ? "bg-success/10 text-success"
-                          : "bg-secondary text-muted-foreground"
-                      }`}
-                    >
-                      {status}
-                    </span>
-                    {status === "active" ? (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => navigate(`/live/host?session=${s.id}`)}
-                          className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
-                        >
-                          <Play className="w-4 h-4 inline mr-1" />
-                          Host
-                        </button>
-                        <button
-                          onClick={() => endSession(s.id)}
-                          className="px-4 py-2 border border-destructive/30 text-destructive rounded-xl text-sm font-semibold hover:bg-destructive/5 transition-colors"
-                        >
-                          End
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => navigate(`/live/review?session=${s.id}`)}
-                        className="px-4 py-2 border border-border text-foreground rounded-xl text-sm font-semibold hover:bg-secondary transition-colors flex items-center gap-1.5"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Review
-                      </button>
-                    )}
-                  </div>
-                </div>
+                ))}
               </div>
-            );
-          })}
-        </div>
-      )}
+            )}
+
+            {/* Past Sessions */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <History className="w-4 h-4" /> Past Sessions ({pastSessions.length})
+              </h2>
+              {pastSessions.length === 0 && activeSessions.length === 0 ? (
+                <div className="bg-card rounded-2xl border border-border p-12 text-center">
+                  <Radio className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-foreground font-semibold">No sessions yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Start your first live session to engage students in real time.</p>
+                </div>
+              ) : pastSessions.length === 0 ? (
+                <div className="bg-card rounded-2xl border border-border p-8 text-center">
+                  <p className="text-sm text-muted-foreground">No past sessions yet. Ended sessions will appear here with collected response data.</p>
+                </div>
+              ) : (
+                pastSessions.map((s) => (
+                  <div key={s.id} className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all duration-300 group">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-secondary">
+                          <Square className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                            {(() => { const ver = versions.find(v => v.id === s.lesson_version_id); const lesson = ver ? lessons.find(l => l.id === ver.lesson_id) : null; return lesson?.title ?? "Untitled Lesson"; })()}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="font-mono font-bold text-sm text-muted-foreground bg-secondary px-2 py-0.5 rounded">{s.session_code}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="w-4 h-4" />{new Date(s.started_at).toLocaleString()}</span>
+                        <span className="text-xs px-3 py-1 rounded-full font-bold bg-secondary text-muted-foreground">ended</span>
+                        <button
+                          onClick={() => navigate(`/live/review?session=${s.id}`)}
+                          className="px-4 py-2 bg-primary/10 text-primary border border-primary/30 rounded-xl text-sm font-bold hover:bg-primary/20 transition-colors flex items-center gap-1.5"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Review Data
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
