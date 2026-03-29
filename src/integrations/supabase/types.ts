@@ -1239,6 +1239,7 @@ export type Database = {
       live_sessions: {
         Row: {
           class_id: string
+          custom_name: string | null
           ended_at: string | null
           host_teacher_id: string
           id: string
@@ -1249,6 +1250,7 @@ export type Database = {
         }
         Insert: {
           class_id: string
+          custom_name?: string | null
           ended_at?: string | null
           host_teacher_id: string
           id?: string
@@ -1259,6 +1261,7 @@ export type Database = {
         }
         Update: {
           class_id?: string
+          custom_name?: string | null
           ended_at?: string | null
           host_teacher_id?: string
           id?: string
