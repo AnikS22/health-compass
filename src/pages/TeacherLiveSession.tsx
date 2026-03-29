@@ -114,16 +114,29 @@ export default function TeacherLiveSession() {
     let mounted = true;
 
     async function fetchResponses() {
-      const { data } = await supabase
-        .from("live_responses")
-        .select("id, user_id, response_payload, submitted_at")
-        .eq("live_session_id", sessionId!)
-        .eq("lesson_block_id", blockId)
-        .order("submitted_at", { ascending: true })
-        .limit(200);
-      if (mounted && data) {
-        setLiveResponses(data as unknown as LiveResponse[]);
-        setResponseCount(data.length);
+      const [respResult, partResult] = await Promise.all([
+        supabase
+          .from("live_responses")
+          .select("id, user_id, response_payload, submitted_at")
+          .eq("live_session_id", sessionId!)
+          .eq("lesson_block_id", blockId)
+          .order("submitted_at", { ascending: true })
+          .limit(200),
+        supabase
+          .from("live_session_participants")
+          .select("id, display_name, joined_at, user_id")
+          .eq("live_session_id", sessionId!)
+      ]);
+      if (!mounted) return;
+      if (respResult.data) {
+        setLiveResponses(respResult.data as unknown as LiveResponse[]);
+        setResponseCount(respResult.data.length);
+      }
+      if (partResult.data) {
+        setParticipants(partResult.data as Participant[]);
+        const nameMap: Record<string, string> = {};
+        (partResult.data as any[]).forEach((p) => { if (p.user_id) nameMap[p.user_id] = p.display_name; });
+        setParticipantNames(nameMap);
       }
     }
 
