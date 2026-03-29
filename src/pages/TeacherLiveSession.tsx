@@ -605,7 +605,7 @@ export default function TeacherLiveSession() {
           <button onClick={toggleFullscreen} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             {isFullscreen ? <Minimize className="w-4 h-4 text-muted-foreground" /> : <Maximize className="w-4 h-4 text-muted-foreground" />}
           </button>
-          <button onClick={handleEndSession} className="px-3 py-1.5 border border-destructive/30 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/5 transition-colors">
+          <button onClick={() => setShowEndModal(true)} className="px-3 py-1.5 border border-destructive/30 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/5 transition-colors">
             End
           </button>
         </div>
