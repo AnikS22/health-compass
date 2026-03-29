@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Radio, Play, Square, Users, Clock, Eye, Plus, Copy, Check, History } from "lucide-react";
+import { Radio, Play, Square, Users, Clock, Eye, Plus, Copy, Check, History, Trash2, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ type LiveSession = {
   ended_at: string | null;
   class_id: string;
   lesson_version_id: string;
+  custom_name: string | null;
 };
 
 type ClassRow = { id: string; name: string; organization_id: string };
@@ -37,6 +38,9 @@ export default function LiveSessions() {
   const [lessonVersionId, setLessonVersionId] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [renamingSession, setRenamingSession] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deletingSession, setDeletingSession] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -47,7 +51,7 @@ export default function LiveSessions() {
     const [sessRes, classRes, courseRes, unitRes, lessonRes, versionRes] = await Promise.all([
       supabase
         .from("live_sessions")
-        .select("id, session_code, started_at, ended_at, class_id, lesson_version_id")
+        .select("id, session_code, started_at, ended_at, class_id, lesson_version_id, custom_name")
         .eq("host_teacher_id", appUserId)
         .order("started_at", { ascending: false })
         .limit(50),
@@ -149,6 +153,29 @@ export default function LiveSessions() {
       .update({ ended_at: new Date().toISOString() })
       .eq("id", sessionId)
       .eq("host_teacher_id", appUserId!);
+    await loadData();
+  }
+
+  async function renameSession(sessionId: string, name: string) {
+    await supabase
+      .from("live_sessions")
+      .update({ custom_name: name || null })
+      .eq("id", sessionId)
+      .eq("host_teacher_id", appUserId!);
+    setRenamingSession(null);
+    setRenameValue("");
+    await loadData();
+  }
+
+  async function deleteSession(sessionId: string) {
+    // Delete related data first, then the session
+    await Promise.all([
+      supabase.from("live_responses").delete().eq("live_session_id", sessionId),
+      supabase.from("live_session_events").delete().eq("live_session_id", sessionId),
+      supabase.from("live_session_participants").delete().eq("live_session_id", sessionId),
+    ]);
+    await supabase.from("live_sessions").delete().eq("id", sessionId).eq("host_teacher_id", appUserId!);
+    setDeletingSession(null);
     await loadData();
   }
 
