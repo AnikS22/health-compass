@@ -34,7 +34,7 @@ export default function JoinSession() {
       const { data: userData } = await supabase
         .from("users")
         .select("organization_id")
-        .eq("id", appUserId)
+        .eq("id", appUserId!)
         .maybeSingle();
 
       if (!userData?.organization_id) {
