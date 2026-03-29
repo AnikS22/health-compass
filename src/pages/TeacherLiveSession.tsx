@@ -323,16 +323,20 @@ export default function TeacherLiveSession() {
     broadcast("session_started");
   }
 
-  async function handleEndSession() {
+  async function handleEndSession(goToReview = false) {
     if (!sessionId) return;
-    // Use host_teacher_id filter to satisfy RLS policy
     await supabase
       .from("live_sessions")
       .update({ ended_at: new Date().toISOString() })
       .eq("id", sessionId)
       .eq("host_teacher_id", appUserId!);
     broadcast("session_ended");
-    navigate("/classes");
+    setShowEndModal(false);
+    if (goToReview) {
+      navigate(`/live/review?session=${sessionId}`);
+    } else {
+      navigate("/live");
+    }
   }
 
   if (!sessionId) {
