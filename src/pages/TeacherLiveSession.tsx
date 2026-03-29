@@ -404,8 +404,8 @@ export default function TeacherLiveSession() {
     options.forEach(o => { tally[o.id] = { count: 0, students: [] }; });
     for (const r of liveResponses) {
       const payload = r.response_payload;
-      const ans = (payload.selected_option ?? payload.answer) as string;
       const name = getStudentName(r.user_id);
+      const ans = (payload.selected_option_id ?? payload.selected_option ?? payload.answer) as string;
       if (ans && tally[ans]) { tally[ans].count++; tally[ans].students.push(name); }
     }
     return options.map(o => ({ option: o.text, count: tally[o.id]?.count ?? 0, students: tally[o.id]?.students ?? [] }));
@@ -416,7 +416,7 @@ export default function TeacherLiveSession() {
     return liveResponses
       .map(r => {
         const p = r.response_payload;
-        const text = (p.text ?? p.answer ?? p.argument ?? p.post ?? "") as string;
+        const text = (p.text ?? p.answer ?? p.argument ?? p.post ?? p.feedback ?? p.review ?? p.counter_argument ?? "") as string;
         return { text, userId: r.user_id };
       })
       .filter(r => r.text.length > 0);
