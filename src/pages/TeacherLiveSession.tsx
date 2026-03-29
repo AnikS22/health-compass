@@ -83,6 +83,8 @@ export default function TeacherLiveSession() {
   const presenterChannelRef = useRef<BroadcastChannel | null>(null);
   const [speakerNotes, setSpeakerNotes] = useState("");
   const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [collectData, setCollectData] = useState(true);
+  const [showEndModal, setShowEndModal] = useState(false);
 
   // Set up broadcast channel
   useEffect(() => {
@@ -321,16 +323,20 @@ export default function TeacherLiveSession() {
     broadcast("session_started");
   }
 
-  async function handleEndSession() {
+  async function handleEndSession(goToReview = false) {
     if (!sessionId) return;
-    // Use host_teacher_id filter to satisfy RLS policy
     await supabase
       .from("live_sessions")
       .update({ ended_at: new Date().toISOString() })
       .eq("id", sessionId)
       .eq("host_teacher_id", appUserId!);
     broadcast("session_ended");
-    navigate("/classes");
+    setShowEndModal(false);
+    if (goToReview) {
+      navigate(`/live/review?session=${sessionId}`);
+    } else {
+      navigate("/live");
+    }
   }
 
   if (!sessionId) {
@@ -402,6 +408,23 @@ export default function TeacherLiveSession() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Collect Data Toggle */}
+          <div className="bg-card rounded-2xl border border-border p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-sm font-bold text-foreground">Collect Response Data</p>
+                <p className="text-xs text-muted-foreground">Save all student responses for review after session ends</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setCollectData(!collectData)}
+              className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${collectData ? "bg-primary" : "bg-muted"}`}
+            >
+              <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${collectData ? "translate-x-5" : "translate-x-0.5"}`} />
+            </button>
           </div>
 
           <button
@@ -599,7 +622,7 @@ export default function TeacherLiveSession() {
           <button onClick={toggleFullscreen} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             {isFullscreen ? <Minimize className="w-4 h-4 text-muted-foreground" /> : <Maximize className="w-4 h-4 text-muted-foreground" />}
           </button>
-          <button onClick={handleEndSession} className="px-3 py-1.5 border border-destructive/30 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/5 transition-colors">
+          <button onClick={() => setShowEndModal(true)} className="px-3 py-1.5 border border-destructive/30 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/5 transition-colors">
             End
           </button>
         </div>
@@ -1314,6 +1337,45 @@ export default function TeacherLiveSession() {
           </div>
         </aside>
       </div>
+
+      {/* End Session Modal */}
+      {showEndModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-2xl border border-border p-8 max-w-md w-full mx-4 space-y-6 shadow-2xl">
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-extrabold text-foreground">End Session?</h2>
+              <p className="text-sm text-muted-foreground">
+                {collectData
+                  ? `${responseCount} responses have been collected. You can review them anytime from Past Sessions.`
+                  : "This session will be marked as ended."}
+              </p>
+            </div>
+            <div className="space-y-3">
+              {collectData && (
+                <button
+                  onClick={() => handleEndSession(true)}
+                  className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  End & Review Responses
+                </button>
+              )}
+              <button
+                onClick={() => handleEndSession(false)}
+                className="w-full px-6 py-3 border border-border rounded-xl text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
+              >
+                End Session
+              </button>
+              <button
+                onClick={() => setShowEndModal(false)}
+                className="w-full px-6 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
