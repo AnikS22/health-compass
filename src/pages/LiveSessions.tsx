@@ -127,21 +127,20 @@ export default function LiveSessions() {
     }
 
     const code = generateCode();
-    const { error } = await supabase.from("live_sessions").insert({
+    const { data: newSession, error } = await supabase.from("live_sessions").insert({
       class_id: classId,
       lesson_version_id: lessonVersionId,
       host_teacher_id: appUserId,
       organization_id: orgId,
       session_code: code,
-    });
+    }).select("id").single();
 
     if (error) {
       setErrorMsg(`Failed to start session: ${error.message}`);
-    } else {
-      setShowCreate(false);
-      await loadData();
+      setCreating(false);
+    } else if (newSession) {
+      navigate(`/live/host?session=${newSession.id}`);
     }
-    setCreating(false);
   }
 
   async function endSession(sessionId: string) {
