@@ -202,6 +202,7 @@ export default function StudentLiveView() {
     const heartbeat = setInterval(markPresent, 30000);
 
     return () => {
+      clearTimeout(joinTimeout);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       clearInterval(heartbeat);
       // Mark left on component unmount (navigating away)
