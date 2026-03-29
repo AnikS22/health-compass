@@ -63,6 +63,7 @@ export default function App() {
           <Route path="/admin/curriculum" element={<ManageCurriculum />} />
           <Route path="/admin/users" element={<ManageUsers />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/account" element={<AccountSettings />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
