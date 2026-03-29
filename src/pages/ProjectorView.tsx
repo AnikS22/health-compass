@@ -320,7 +320,7 @@ export default function ProjectorView() {
                     <span className="text-4xl">💡</span>
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold text-white">{String(config.key_idea ?? "")}</h2>
+                    <h2 className="text-3xl font-bold text-foreground">{String(config.key_idea ?? "")}</h2>
                     {config.detail != null && <p className="text-xl text-muted-foreground mt-3">{String(config.detail)}</p>}
                   </div>
                 </div>
@@ -330,7 +330,7 @@ export default function ProjectorView() {
             {/* MCQ / MICRO CHALLENGE */}
             {(step.block_type === "micro_challenge" || (step.block_type as string) === "mcq") && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.question as string) ?? ""}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.question as string) ?? ""}</p>
                 {showResults ? (
                   <div className="space-y-4">
                     {getMcqTallies().map((t, i) => {
@@ -342,7 +342,7 @@ export default function ProjectorView() {
                               <span className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold">{String.fromCharCode(65 + i)}</span>
                               {t.option}
                             </span>
-                            <span className="text-2xl font-extrabold text-white">{t.count}</span>
+                            <span className="text-2xl font-extrabold text-foreground">{t.count}</span>
                           </div>
                           <div className="h-10 bg-muted rounded-xl overflow-hidden">
                             <div className="h-full bg-primary rounded-xl transition-all duration-1000 ease-out" style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }} />
@@ -380,7 +380,7 @@ export default function ProjectorView() {
                               <span className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold">{String.fromCharCode(65 + i)}</span>
                               {t.option}
                             </span>
-                            <span className="text-2xl font-extrabold text-white">{t.count}</span>
+                            <span className="text-2xl font-extrabold text-foreground">{t.count}</span>
                           </div>
                           <div className="h-10 bg-muted rounded-xl overflow-hidden">
                             <div className="h-full bg-primary rounded-xl transition-all duration-1000 ease-out" style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }} />
@@ -408,7 +408,7 @@ export default function ProjectorView() {
             {/* REASONING RESPONSE / SHORT ANSWER / EXIT TICKET */}
             {["reasoning_response", "short_answer", "exit_ticket"].includes(step.block_type) && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.prompt as string) ?? ""}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.prompt as string) ?? ""}</p>
                 {showResults ? (
                   <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                     {getTextResponses().map((r, i) => (
@@ -431,7 +431,7 @@ export default function ProjectorView() {
             {/* PEER COMPARE */}
             {step.block_type === "peer_compare" && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.prompt as string) ?? ""}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.prompt as string) ?? ""}</p>
                 {showResults ? (
                   <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                     {getTextResponses().map((r, i) => (
@@ -454,7 +454,7 @@ export default function ProjectorView() {
             {/* SCENARIO */}
             {step.block_type === "scenario" && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.scenario_text as string) ?? step.body ?? ""}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.scenario_text as string) ?? step.body ?? ""}</p>
                 {showResults ? (
                   <div className="space-y-4">
                     {getScenarioTallies().map((t, i) => {
@@ -463,7 +463,7 @@ export default function ProjectorView() {
                         <div key={i} className="space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-foreground font-semibold text-lg">{t.choice}</span>
-                            <span className="text-2xl font-extrabold text-white">{t.count}</span>
+                            <span className="text-2xl font-extrabold text-foreground">{t.count}</span>
                           </div>
                           <div className="h-10 bg-muted rounded-xl overflow-hidden">
                             <div className="h-full bg-primary rounded-xl transition-all duration-1000 ease-out" style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }} />
@@ -487,7 +487,7 @@ export default function ProjectorView() {
             {/* DEBATE */}
             {step.block_type === "debate" && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.motion as string) ?? (config.prompt as string) ?? ""}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.motion as string) ?? (config.prompt as string) ?? ""}</p>
                 {showResults ? (
                   <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                     {getTextResponses().map((r, i) => (
@@ -510,7 +510,7 @@ export default function ProjectorView() {
             {/* COLLABORATIVE BOARD */}
             {(step.block_type === "collaborative_board" || step.block_type === "group_board") && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.prompt as string) ?? step.body ?? "Share your ideas"}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Share your ideas"}</p>
                 {showResults ? (
                   <div className="grid grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto">
                     {getBoardPosts().map((post, i) => (
@@ -533,7 +533,7 @@ export default function ProjectorView() {
             {/* DILEMMA TREE */}
             {step.block_type === "dilemma_tree" && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.root_question as string) ?? ""}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.root_question as string) ?? ""}</p>
                 {showResults ? (
                   <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                     {liveResponses.map((r, i) => {
@@ -559,7 +559,7 @@ export default function ProjectorView() {
             {/* DRAG DROP */}
             {step.block_type === "drag_drop" && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.instructions as string) ?? step.body ?? "Sort the items"}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.instructions as string) ?? step.body ?? "Sort the items"}</p>
                 {showResults ? (
                   <div className="space-y-4">
                     {(() => {
@@ -569,7 +569,7 @@ export default function ProjectorView() {
                         <>
                           <div className="flex flex-wrap gap-3 mb-3">
                             {agg.categories.map((cat, ci) => (
-                              <span key={cat} className="flex items-center gap-2 text-sm font-medium text-white/80">
+                              <span key={cat} className="flex items-center gap-2 text-sm font-medium text-foreground/80">
                                 <span className={`w-4 h-4 rounded ${catColors[ci % catColors.length]}`} />
                                 {cat}
                               </span>
@@ -614,7 +614,7 @@ export default function ProjectorView() {
             {/* RED TEAM / GROUP CHALLENGE / PEER REVIEW */}
             {["red_team", "group_challenge", "peer_review"].includes(step.block_type) && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">
+                <p className="text-3xl font-bold text-foreground">
                   {(config.claim as string) ?? (config.challenge as string) ?? (config.prompt as string) ?? step.body ?? ""}
                 </p>
                 {showResults ? (
@@ -639,7 +639,7 @@ export default function ProjectorView() {
             {/* MATCHING */}
             {step.block_type === "matching" && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.prompt as string) ?? step.body ?? "Match the pairs"}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Match the pairs"}</p>
                 {showResults ? (
                   <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                     {liveResponses.map((r, i) => {
@@ -671,7 +671,7 @@ export default function ProjectorView() {
             {/* DRAWING */}
             {step.block_type === "drawing" && (
               <div className="space-y-6">
-                <p className="text-3xl font-bold text-white">{(config.prompt as string) ?? step.body ?? ""}</p>
+                <p className="text-3xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? ""}</p>
                 {showResults ? (
                   <div className="grid grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto">
                     {liveResponses.map((r, i) => {
