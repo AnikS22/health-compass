@@ -410,6 +410,23 @@ export default function TeacherLiveSession() {
             )}
           </div>
 
+          {/* Collect Data Toggle */}
+          <div className="bg-card rounded-2xl border border-border p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-sm font-bold text-foreground">Collect Response Data</p>
+                <p className="text-xs text-muted-foreground">Save all student responses for review after session ends</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setCollectData(!collectData)}
+              className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${collectData ? "bg-primary" : "bg-muted"}`}
+            >
+              <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${collectData ? "translate-x-5" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+
           <button
             onClick={handleStart}
             disabled={steps.length === 0}
