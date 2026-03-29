@@ -250,16 +250,16 @@ export default function ProjectorView() {
 
   if (!sessionId) {
     return (
-      <div className="flex items-center justify-center h-screen bg-black">
-        <p className="text-white/60 text-lg">No session specified.</p>
+      <div className="flex items-center justify-center h-screen bg-white">
+        <p className="text-muted-foreground text-lg">No session specified.</p>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-black">
-        <div className="animate-pulse text-white/60 text-lg">Loading presentation…</div>
+      <div className="flex items-center justify-center h-screen bg-white">
+        <div className="animate-pulse text-muted-foreground text-lg">Loading presentation…</div>
       </div>
     );
   }
@@ -269,9 +269,9 @@ export default function ProjectorView() {
   const progress = steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
 
   return (
-    <div className="h-screen w-screen bg-black flex flex-col overflow-hidden select-none cursor-default">
+    <div className="h-screen w-screen bg-white flex flex-col overflow-hidden select-none cursor-default">
       {/* Thin progress bar */}
-      <div className="h-1 bg-white/10 shrink-0">
+      <div className="h-1 bg-muted shrink-0">
         <div className="h-full bg-primary transition-all duration-700 ease-out" style={{ width: `${progress}%` }} />
       </div>
 
@@ -287,25 +287,25 @@ export default function ProjectorView() {
                   {currentStep + 1} / {steps.length}
                 </span>
                 {step.title && (
-                  <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight">{step.title}</h1>
+                  <h1 className="text-4xl md:text-5xl font-extrabold text-foreground tracking-tight leading-tight">{step.title}</h1>
                 )}
               </div>
             </div>
 
             {/* Body text */}
             {step.body && (
-              <p className="text-xl md:text-2xl text-white/70 leading-relaxed max-w-3xl">{step.body}</p>
+              <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-3xl">{step.body}</p>
             )}
 
             {/* VIDEO */}
             {(step.block_type as string) === "video" && (
-              <div className="rounded-2xl overflow-hidden border border-white/10 aspect-video max-w-4xl mx-auto">
+              <div className="rounded-2xl overflow-hidden border border-border aspect-video max-w-4xl mx-auto">
                 {config.video_url ? (
                   <VideoEmbed url={config.video_url as string} />
                 ) : config.youtube_url ? (
                   <VideoEmbed url={config.youtube_url as string} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-white/5">
+                  <div className="w-full h-full flex items-center justify-center bg-muted/50">
                     <span className="text-6xl">🎬</span>
                   </div>
                 )}
@@ -321,7 +321,7 @@ export default function ProjectorView() {
                   </div>
                   <div>
                     <h2 className="text-3xl font-bold text-white">{String(config.key_idea ?? "")}</h2>
-                    {config.detail != null && <p className="text-xl text-white/60 mt-3">{String(config.detail)}</p>}
+                    {config.detail != null && <p className="text-xl text-muted-foreground mt-3">{String(config.detail)}</p>}
                   </div>
                 </div>
               </div>
@@ -338,13 +338,13 @@ export default function ProjectorView() {
                       return (
                         <div key={i} className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-white font-semibold text-lg flex items-center gap-3">
+                            <span className="text-foreground font-semibold text-lg flex items-center gap-3">
                               <span className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold">{String.fromCharCode(65 + i)}</span>
                               {t.option}
                             </span>
                             <span className="text-2xl font-extrabold text-white">{t.count}</span>
                           </div>
-                          <div className="h-10 bg-white/10 rounded-xl overflow-hidden">
+                          <div className="h-10 bg-muted rounded-xl overflow-hidden">
                             <div className="h-full bg-primary rounded-xl transition-all duration-1000 ease-out" style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }} />
                           </div>
                         </div>
@@ -354,11 +354,11 @@ export default function ProjectorView() {
                 ) : (
                   <div className="grid grid-cols-2 gap-4">
                     {((config.options as Array<{ id: string; text: string }>) ?? []).map((opt, i) => (
-                      <div key={opt.id} className="rounded-2xl border-2 border-white/10 bg-white/5 p-6 flex items-center gap-4">
+                      <div key={opt.id} className="rounded-2xl border-2 border-border bg-muted/50 p-6 flex items-center gap-4">
                         <span className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-xl shrink-0">
                           {String.fromCharCode(65 + i)}
                         </span>
-                        <span className="text-white font-medium text-lg">{opt.text}</span>
+                        <span className="text-foreground font-medium text-lg">{opt.text}</span>
                       </div>
                     ))}
                   </div>
@@ -376,28 +376,28 @@ export default function ProjectorView() {
                       return (
                         <div key={i} className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-white font-semibold text-lg flex items-center gap-3">
+                            <span className="text-foreground font-semibold text-lg flex items-center gap-3">
                               <span className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold">{String.fromCharCode(65 + i)}</span>
                               {t.option}
                             </span>
                             <span className="text-2xl font-extrabold text-white">{t.count}</span>
                           </div>
-                          <div className="h-10 bg-white/10 rounded-xl overflow-hidden">
+                          <div className="h-10 bg-muted rounded-xl overflow-hidden">
                             <div className="h-full bg-primary rounded-xl transition-all duration-1000 ease-out" style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }} />
                           </div>
                         </div>
                       );
                     })}
-                    <p className="text-white/40 text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                    <p className="text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-4">
                     {((config.options as string[]) ?? []).map((opt, i) => (
-                      <div key={i} className="rounded-2xl border-2 border-white/10 bg-white/5 p-6 flex items-center gap-4">
+                      <div key={i} className="rounded-2xl border-2 border-border bg-muted/50 p-6 flex items-center gap-4">
                         <span className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-xl shrink-0">
                           {String.fromCharCode(65 + i)}
                         </span>
-                        <span className="text-white font-medium text-lg">{opt}</span>
+                        <span className="text-foreground font-medium text-lg">{opt}</span>
                       </div>
                     ))}
                   </div>
@@ -412,15 +412,15 @@ export default function ProjectorView() {
                 {showResults ? (
                   <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                     {getTextResponses().map((r, i) => (
-                      <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <div key={i} className="rounded-2xl border border-border bg-muted/50 p-5">
                         <p className="text-sm text-primary font-bold mb-2">{getStudentName(r.userId)}</p>
-                        <p className="text-white/90">{r.text}</p>
+                        <p className="text-foreground">{r.text}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
-                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 text-white text-lg font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-muted text-foreground text-lg font-bold animate-pulse">
                       ✍️ {liveResponses.length} of {participants.length} writing…
                     </span>
                   </div>
@@ -435,15 +435,15 @@ export default function ProjectorView() {
                 {showResults ? (
                   <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                     {getTextResponses().map((r, i) => (
-                      <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <div key={i} className="rounded-2xl border border-border bg-muted/50 p-5">
                         <p className="text-sm text-primary font-bold mb-2">{getStudentName(r.userId)}</p>
-                        <p className="text-white/90">{r.text}</p>
+                        <p className="text-foreground">{r.text}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
-                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 text-white text-lg font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-muted text-foreground text-lg font-bold animate-pulse">
                       👥 {liveResponses.length} of {participants.length} sharing…
                     </span>
                   </div>
@@ -462,10 +462,10 @@ export default function ProjectorView() {
                       return (
                         <div key={i} className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-white font-semibold text-lg">{t.choice}</span>
+                            <span className="text-foreground font-semibold text-lg">{t.choice}</span>
                             <span className="text-2xl font-extrabold text-white">{t.count}</span>
                           </div>
-                          <div className="h-10 bg-white/10 rounded-xl overflow-hidden">
+                          <div className="h-10 bg-muted rounded-xl overflow-hidden">
                             <div className="h-full bg-primary rounded-xl transition-all duration-1000 ease-out" style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }} />
                           </div>
                         </div>
@@ -475,8 +475,8 @@ export default function ProjectorView() {
                 ) : (
                   <div className="space-y-3">
                     {((config.choices as Array<{ id: string; text: string }>) ?? []).map((c) => (
-                      <div key={c.id} className="rounded-2xl border-2 border-white/10 bg-white/5 p-5">
-                        <span className="text-white font-medium text-lg">{c.text}</span>
+                      <div key={c.id} className="rounded-2xl border-2 border-border bg-muted/50 p-5">
+                        <span className="text-foreground font-medium text-lg">{c.text}</span>
                       </div>
                     ))}
                   </div>
@@ -491,15 +491,15 @@ export default function ProjectorView() {
                 {showResults ? (
                   <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                     {getTextResponses().map((r, i) => (
-                      <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <div key={i} className="rounded-2xl border border-border bg-muted/50 p-5">
                         <p className="text-sm text-primary font-bold mb-2">{getStudentName(r.userId)}</p>
-                        <p className="text-white/90">{r.text}</p>
+                        <p className="text-foreground">{r.text}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
-                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 text-white text-lg font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-muted text-foreground text-lg font-bold animate-pulse">
                       ⚖️ {liveResponses.length} of {participants.length} debating…
                     </span>
                   </div>
@@ -514,15 +514,15 @@ export default function ProjectorView() {
                 {showResults ? (
                   <div className="grid grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto">
                     {getBoardPosts().map((post, i) => (
-                      <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div key={i} className="rounded-2xl border border-border bg-muted/50 p-4">
                         <p className="text-xs text-primary font-bold mb-1">{getStudentName(post.userId)}</p>
-                        <p className="text-white/90 text-sm">{post.text}</p>
+                        <p className="text-foreground text-sm">{post.text}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
-                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 text-white text-lg font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-muted text-foreground text-lg font-bold animate-pulse">
                       📝 {liveResponses.length} of {participants.length} posting…
                     </span>
                   </div>
@@ -539,16 +539,16 @@ export default function ProjectorView() {
                     {liveResponses.map((r, i) => {
                       const p = r.response_payload as Record<string, unknown>;
                       return (
-                        <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                        <div key={i} className="rounded-2xl border border-border bg-muted/50 p-5">
                           <p className="text-sm text-primary font-bold mb-2">{getStudentName(r.user_id)}</p>
-                          <p className="text-white/90">Path: {Array.isArray(p.path) ? (p.path as string[]).join(" → ") : "—"}</p>
+                          <p className="text-foreground">Path: {Array.isArray(p.path) ? (p.path as string[]).join(" → ") : "—"}</p>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
-                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 text-white text-lg font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-muted text-foreground text-lg font-bold animate-pulse">
                       🌳 {liveResponses.length} of {participants.length} exploring…
                     </span>
                   </div>
@@ -578,16 +578,16 @@ export default function ProjectorView() {
                           {agg.items.map((item) => (
                             <div key={item.id} className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <span className="font-semibold text-white text-lg">{item.text}</span>
-                                <span className="text-sm text-white/40">Correct: {item.correct_category}</span>
+                                <span className="font-semibold text-foreground text-lg">{item.text}</span>
+                                <span className="text-sm text-muted-foreground">Correct: {item.correct_category}</span>
                               </div>
-                              <div className="h-9 bg-white/10 rounded-xl overflow-hidden flex">
+                              <div className="h-9 bg-muted rounded-xl overflow-hidden flex">
                                 {agg.categories.map((cat, ci) => {
                                   const pct = item.distribution[cat] || 0;
                                   if (pct === 0) return null;
                                   return (
                                     <div key={cat}
-                                      className={`h-full ${catColors[ci % catColors.length]} flex items-center justify-center text-xs font-bold text-white transition-all duration-1000`}
+                                      className={`h-full ${catColors[ci % catColors.length]} flex items-center justify-center text-xs font-bold text-foreground transition-all duration-1000`}
                                       style={{ width: `${pct}%` }}
                                     >
                                       {pct >= 15 ? `${pct}%` : ""}
@@ -603,7 +603,7 @@ export default function ProjectorView() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
-                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 text-white text-lg font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-muted text-foreground text-lg font-bold animate-pulse">
                       🎯 {liveResponses.length} of {participants.length} sorting…
                     </span>
                   </div>
@@ -620,15 +620,15 @@ export default function ProjectorView() {
                 {showResults ? (
                   <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                     {getTextResponses().map((r, i) => (
-                      <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <div key={i} className="rounded-2xl border border-border bg-muted/50 p-5">
                         <p className="text-sm text-primary font-bold mb-2">{getStudentName(r.userId)}</p>
-                        <p className="text-white/90">{r.text}</p>
+                        <p className="text-foreground">{r.text}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
-                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 text-white text-lg font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-muted text-foreground text-lg font-bold animate-pulse">
                       {getBlockIcon(step.block_type)} {liveResponses.length} of {participants.length} working…
                     </span>
                   </div>
@@ -647,7 +647,7 @@ export default function ProjectorView() {
                       const correct = p.correct_count as number | undefined;
                       const total = p.total_count as number | undefined;
                       return (
-                        <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                        <div key={i} className="rounded-2xl border border-border bg-muted/50 p-5">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm text-primary font-bold">{getStudentName(r.user_id)}</span>
                             {correct !== undefined && total !== undefined && (
@@ -660,7 +660,7 @@ export default function ProjectorView() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
-                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 text-white text-lg font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-muted text-foreground text-lg font-bold animate-pulse">
                       🔗 {liveResponses.length} of {participants.length} matching…
                     </span>
                   </div>
@@ -678,12 +678,12 @@ export default function ProjectorView() {
                       const p = r.response_payload as Record<string, unknown>;
                       const dataUrl = (p.drawing_data ?? p.image ?? p.data_url ?? "") as string;
                       return (
-                        <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <div key={i} className="rounded-2xl border border-border bg-muted/50 p-3">
                           <p className="text-xs text-primary font-bold mb-2">{getStudentName(r.user_id)}</p>
                           {dataUrl && dataUrl.startsWith("data:") ? (
                             <img src={dataUrl} alt="Drawing" className="w-full rounded-lg" />
                           ) : (
-                            <p className="text-white/40 text-sm italic">Drawing submitted</p>
+                            <p className="text-muted-foreground text-sm italic">Drawing submitted</p>
                           )}
                         </div>
                       );
@@ -691,7 +691,7 @@ export default function ProjectorView() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
-                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 text-white text-lg font-bold animate-pulse">
+                    <span className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-muted text-foreground text-lg font-bold animate-pulse">
                       🎨 {liveResponses.length} of {participants.length} drawing…
                     </span>
                   </div>
@@ -704,15 +704,15 @@ export default function ProjectorView() {
               "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board",
               "group_board", "scenario", "dilemma_tree", "drag_drop", "matching", "drawing",
               "red_team", "group_challenge", "peer_review"].includes(step.block_type) && (
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center space-y-4">
+              <div className="rounded-3xl border border-border bg-muted/50 p-10 text-center space-y-4">
                 <span className="text-6xl">{getBlockIcon(step.block_type)}</span>
-                <p className="text-2xl font-medium text-white capitalize">{step.block_type.replace(/_/g, " ")}</p>
+                <p className="text-2xl font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>
                 {showResults && getTextResponses().length > 0 && (
                   <div className="grid grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto text-left mt-4">
                     {getTextResponses().map((r, i) => (
-                      <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <div key={i} className="rounded-2xl border border-border bg-muted/50 p-5">
                         <p className="text-sm text-primary font-bold mb-2">{getStudentName(r.userId)}</p>
-                        <p className="text-white/90">{r.text}</p>
+                        <p className="text-foreground">{r.text}</p>
                       </div>
                     ))}
                   </div>
@@ -726,19 +726,19 @@ export default function ProjectorView() {
       {/* Bottom bar */}
       <div className="px-8 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <span className="text-white/30 text-sm font-medium">{lessonTitle}</span>
+          <span className="text-muted-foreground text-sm font-medium">{lessonTitle}</span>
         </div>
         <div className="flex items-center gap-4">
           {locked && (
-            <span className="text-xs font-bold text-red-400 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-destructive flex items-center gap-1.5">
               🔒 Locked
             </span>
           )}
-          <span className="text-white/30 text-sm flex items-center gap-1.5">
+          <span className="text-muted-foreground text-sm flex items-center gap-1.5">
             👥 {participants.length} students
           </span>
           {timerRunning && timerSeconds !== null && (
-            <span className="text-white font-mono text-lg font-bold tabular-nums">
+            <span className="text-foreground font-mono text-lg font-bold tabular-nums">
               ⏱ {Math.floor(timerSeconds / 60)}:{(timerSeconds % 60).toString().padStart(2, "0")}
             </span>
           )}
