@@ -593,7 +593,7 @@ export default function StudentLiveView() {
             ))}
           </div>
         )}
-        {revealedResults.drag_drop_aggregation && (() => {
+        {revealedResults.drag_drop_aggregation ? (() => {
           const agg = revealedResults.drag_drop_aggregation as { categories: string[]; items: { text: string; correct_category: string; distribution: Record<string, number> }[] };
           const catColors = ["bg-primary/70", "bg-blue-500/70", "bg-amber-500/70", "bg-emerald-500/70", "bg-rose-500/70", "bg-violet-500/70"];
           return (
@@ -624,7 +624,7 @@ export default function StudentLiveView() {
               ))}
             </div>
           );
-        })()}
+        })() : null}
         <p className="text-xs text-muted-foreground text-center">{String(revealedResults.response_count ?? "")} total responses</p>
       </div>
     );
