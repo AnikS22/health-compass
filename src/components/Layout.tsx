@@ -104,10 +104,21 @@ export default function Layout() {
         </nav>
 
         {/* User Footer */}
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-border space-y-0.5">
           {user && (
             <p className="px-3 mb-2 text-xs text-muted-foreground truncate">{user.email}</p>
           )}
+          <NavLink
+            to="/account"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors w-full ${
+                isActive ? "bg-primary/10 text-foreground font-semibold border border-primary/20" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`
+            }
+          >
+            <Settings className="w-[18px] h-[18px]" />
+            Account Settings
+          </NavLink>
           <button
             onClick={signOut}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full"
