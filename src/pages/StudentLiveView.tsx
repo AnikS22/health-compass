@@ -264,14 +264,14 @@ export default function StudentLiveView() {
     if (!sessionId || !appUserId || !steps[activeIndex]) return;
     setSubmitted(true);
 
-    // Save to DB
-    await supabase.from("live_responses").insert([{
+    // Save to DB with upsert
+    await supabase.from("live_responses").upsert({
       live_session_id: sessionId,
       lesson_block_id: steps[activeIndex].id,
       user_id: appUserId,
       response_payload: (response ?? {}) as unknown as Json,
       confidence: 3,
-    }]);
+    }, { onConflict: "live_session_id,lesson_block_id,user_id" });
 
     // Notify teacher via broadcast
     broadcastRef.current?.send({
