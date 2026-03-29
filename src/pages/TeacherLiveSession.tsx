@@ -126,6 +126,7 @@ export default function TeacherLiveSession() {
           .from("live_session_participants")
           .select("id, display_name, joined_at, user_id")
           .eq("live_session_id", sessionId!)
+          .is("left_at", null)
       ]);
       if (!mounted) return;
       if (respResult.data) {
@@ -203,7 +204,8 @@ export default function TeacherLiveSession() {
     const { data: parts } = await supabase
       .from("live_session_participants")
       .select("id, display_name, joined_at, user_id")
-      .eq("live_session_id", sessionId);
+      .eq("live_session_id", sessionId)
+      .is("left_at", null);
     if (parts) {
       setParticipants(parts as Participant[]);
       const nameMap: Record<string, string> = {};

@@ -132,6 +132,60 @@ export default function StudentLiveView() {
   const [revealedResults, setRevealedResults] = useState<Record<string, unknown> | null>(null);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
 
+  // Mark presence on mount, clear on unmount / tab close
+  useEffect(() => {
+    if (!sessionId || !appUserId) return;
+
+    // Clear left_at to mark as present
+    const markPresent = () => {
+      supabase
+        .from("live_session_participants")
+        .update({ left_at: null } as any)
+        .eq("live_session_id", sessionId)
+        .eq("user_id", appUserId)
+        .then();
+    };
+
+    // Set left_at to mark as gone
+    const markLeft = () => {
+      // Use sendBeacon for reliability on tab close
+      const url = `${(supabase as any).supabaseUrl}/rest/v1/live_session_participants?live_session_id=eq.${sessionId}&user_id=eq.${appUserId}`;
+      const body = JSON.stringify({ left_at: new Date().toISOString() });
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+        apikey: (supabase as any).supabaseKey,
+        Authorization: `Bearer ${(supabase as any).supabaseKey}`,
+      };
+      // Try sendBeacon first (works on tab close), fall back to fetch
+      const blob = new Blob([body], { type: "application/json" });
+      if (navigator.sendBeacon) {
+        // sendBeacon doesn't support custom headers, so use fetch with keepalive
+      }
+      fetch(url, { method: "PATCH", headers, body, keepalive: true }).catch(() => {});
+    };
+
+    markPresent();
+
+    const handleBeforeUnload = () => markLeft();
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Also mark present periodically (heartbeat every 30s)
+    const heartbeat = setInterval(markPresent, 30000);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      clearInterval(heartbeat);
+      // Mark left on component unmount (navigating away)
+      supabase
+        .from("live_session_participants")
+        .update({ left_at: new Date().toISOString() } as any)
+        .eq("live_session_id", sessionId)
+        .eq("user_id", appUserId)
+        .then();
+    };
+  }, [sessionId, appUserId]);
+
   useEffect(() => {
     if (!sessionId) return;
     loadSession();
