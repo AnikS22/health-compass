@@ -1125,10 +1125,10 @@ export default function TeacherLiveSession() {
                 Responses ({liveResponses.length})
               </p>
               <div className="space-y-1">
-                {liveResponses.slice(0, 20).map((r) => {
+                {liveResponses.slice(0, 50).map((r) => {
                   const p = r.response_payload;
                   const preview = String(
-                    p.selected_option ?? p.answer ?? p.text ?? p.argument ?? p.selected_choice_id ?? p.emoji ?? "✓"
+                    p.selected_option_id ?? p.selected_option ?? p.answer ?? p.text ?? p.argument ?? p.selected_choice_id ?? p.emoji ?? "✓"
                   ).slice(0, 40);
                   return (
                     <div key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/50 text-xs">
