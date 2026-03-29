@@ -24,6 +24,20 @@ export default function Login() {
     return null;
   }
 
+  const handleForgotPassword = async () => {
+    setLoading(true);
+    setStatus("");
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      setStatus(error.message);
+    } else {
+      setStatus("Check your email for a password reset link.");
+    }
+    setLoading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
