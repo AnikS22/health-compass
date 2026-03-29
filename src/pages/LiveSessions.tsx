@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Radio, Play, Square, Users, Clock, Eye, Plus, Copy, Check } from "lucide-react";
+import { Radio, Play, Square, Users, Clock, Eye, Plus, Copy, Check, History } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
