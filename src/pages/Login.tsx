@@ -30,6 +30,21 @@ export default function Login() {
     return null;
   }
 
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setStatus("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      setStatus(error.message);
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -64,7 +79,6 @@ export default function Login() {
         return;
       }
       if (data.session) {
-        // If independent, update the flag after trigger fires
         if (isIndependent && data.user) {
           setTimeout(async () => {
             const { data: appUser } = await supabase
