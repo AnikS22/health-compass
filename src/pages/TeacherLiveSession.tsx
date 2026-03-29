@@ -80,6 +80,9 @@ export default function TeacherLiveSession() {
   const [participantNames, setParticipantNames] = useState<Record<string, string>>({});
   const presentationRef = useRef<HTMLDivElement>(null);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
+  const presenterChannelRef = useRef<BroadcastChannel | null>(null);
+  const [speakerNotes, setSpeakerNotes] = useState("");
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
 
   // Set up broadcast channel
   useEffect(() => {
