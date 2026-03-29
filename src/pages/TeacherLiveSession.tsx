@@ -114,15 +114,29 @@ export default function TeacherLiveSession() {
     let mounted = true;
 
     async function fetchResponses() {
-      const { data } = await supabase
-        .from("live_responses")
-        .select("id, user_id, response_payload, submitted_at")
-        .eq("live_session_id", sessionId!)
-        .eq("lesson_block_id", blockId)
-        .order("submitted_at", { ascending: true });
-      if (mounted && data) {
-        setLiveResponses(data as unknown as LiveResponse[]);
-        setResponseCount(data.length);
+      const [respResult, partResult] = await Promise.all([
+        supabase
+          .from("live_responses")
+          .select("id, user_id, response_payload, submitted_at")
+          .eq("live_session_id", sessionId!)
+          .eq("lesson_block_id", blockId)
+          .order("submitted_at", { ascending: true })
+          .limit(200),
+        supabase
+          .from("live_session_participants")
+          .select("id, display_name, joined_at, user_id")
+          .eq("live_session_id", sessionId!)
+      ]);
+      if (!mounted) return;
+      if (respResult.data) {
+        setLiveResponses(respResult.data as unknown as LiveResponse[]);
+        setResponseCount(respResult.data.length);
+      }
+      if (partResult.data) {
+        setParticipants(partResult.data as Participant[]);
+        const nameMap: Record<string, string> = {};
+        (partResult.data as any[]).forEach((p) => { if (p.user_id) nameMap[p.user_id] = p.display_name; });
+        setParticipantNames(nameMap);
       }
     }
 
@@ -1120,15 +1134,15 @@ export default function TeacherLiveSession() {
 
           {/* Response details sidebar */}
           {isInteractive && liveResponses.length > 0 && (
-            <div className="p-3 border-b border-border max-h-48 overflow-y-auto">
+            <div className="p-3 border-b border-border max-h-64 overflow-y-auto">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1 mb-2">
                 Responses ({liveResponses.length})
               </p>
               <div className="space-y-1">
-                {liveResponses.slice(0, 20).map((r) => {
+                {liveResponses.slice(0, 50).map((r) => {
                   const p = r.response_payload;
                   const preview = String(
-                    p.selected_option ?? p.answer ?? p.text ?? p.argument ?? p.selected_choice_id ?? p.emoji ?? "✓"
+                    p.selected_option_id ?? p.selected_option ?? p.answer ?? p.text ?? p.argument ?? p.selected_choice_id ?? p.emoji ?? "✓"
                   ).slice(0, 40);
                   return (
                     <div key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/50 text-xs">
