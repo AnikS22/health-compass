@@ -495,6 +495,30 @@ export default function TeacherLiveSession() {
     return posts.filter(p => p.text.length > 0);
   }
 
+  // Get drag-drop category aggregation: for each item, what % placed it in each category
+  function getDragDropAggregation(): { categories: string[]; items: { id: string; text: string; correct_category: string; distribution: Record<string, number> }[] } {
+    const categories = (config.categories as string[]) ?? [];
+    const items = (config.items as Array<{ id: string; text: string; correct_category: string }>) ?? [];
+    const totalResponses = liveResponses.length || 1;
+    
+    const result = items.map(item => {
+      const dist: Record<string, number> = {};
+      categories.forEach(cat => { dist[cat] = 0; });
+      for (const r of liveResponses) {
+        const placements = (r.response_payload.placements ?? r.response_payload.answer ?? {}) as Record<string, string>;
+        const placed = placements[item.id];
+        if (placed && dist[placed] !== undefined) {
+          dist[placed]++;
+        }
+      }
+      // Convert to percentages
+      const pctDist: Record<string, number> = {};
+      categories.forEach(cat => { pctDist[cat] = Math.round((dist[cat] / totalResponses) * 100); });
+      return { id: item.id, text: item.text, correct_category: item.correct_category, distribution: pctDist };
+    });
+    return { categories, items: result };
+  }
+
   function handleRevealResults() {
     setShowResults(true);
     const bt = step?.block_type ?? "";
@@ -502,11 +526,12 @@ export default function TeacherLiveSession() {
       block_id: step?.id,
       tallies: (bt === "poll" || bt === "multi_select") ? getPollTallies() : undefined,
       mcq_tallies: (bt === "micro_challenge" || bt === "mcq") ? getMcqTallies() : undefined,
-      text_responses: ["short_answer", "reasoning_response", "exit_ticket", "debate"].includes(bt)
+      text_responses: ["short_answer", "reasoning_response", "exit_ticket", "debate", "peer_compare", "red_team", "group_challenge", "peer_review"].includes(bt)
         ? getTextResponses().slice(0, 30).map(r => r.text)
         : undefined,
       scenario_tallies: bt === "scenario" ? getScenarioTallies() : undefined,
       board_posts: (bt === "collaborative_board" || bt === "group_board") ? getBoardPosts().map(p => p.text) : undefined,
+      drag_drop_aggregation: bt === "drag_drop" ? getDragDropAggregation() : undefined,
       response_count: liveResponses.length,
     });
   }
@@ -931,19 +956,50 @@ export default function TeacherLiveSession() {
 
               {step.block_type === "drag_drop" && (
                 <div className="space-y-4">
-                  <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? step.body ?? "Drag & Drop"}</p>
+                  <p className="text-2xl font-bold text-foreground">{(config.instructions as string) ?? step.body ?? "Sort the items"}</p>
                   {showResults ? (
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {liveResponses.map((r, i) => {
-                        const p = r.response_payload as Record<string, unknown>;
-                        const placements = p.placements ?? p.answer ?? p.zones ?? {};
+                    <div className="space-y-4">
+                      {(() => {
+                        const agg = getDragDropAggregation();
+                        const catColors = ["bg-primary/70", "bg-blue-500/70", "bg-amber-500/70", "bg-emerald-500/70", "bg-rose-500/70", "bg-violet-500/70"];
                         return (
-                          <div key={i} className="rounded-xl border border-border bg-card p-4">
-                            <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.user_id)}</p>
-                            <p className="text-sm text-foreground">{typeof placements === "object" ? JSON.stringify(placements) : String(placements)}</p>
-                          </div>
+                          <>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {agg.categories.map((cat, ci) => (
+                                <span key={cat} className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                                  <span className={`w-3 h-3 rounded-sm ${catColors[ci % catColors.length]}`} />
+                                  {cat}
+                                </span>
+                              ))}
+                            </div>
+                            {agg.items.map((item) => (
+                              <div key={item.id} className="space-y-1">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="font-medium text-foreground">{item.text}</span>
+                                  <span className="text-xs text-muted-foreground">Correct: {item.correct_category}</span>
+                                </div>
+                                <div className="h-7 bg-secondary rounded-lg overflow-hidden flex">
+                                  {agg.categories.map((cat, ci) => {
+                                    const pct = item.distribution[cat] || 0;
+                                    if (pct === 0) return null;
+                                    const isCorrect = cat === item.correct_category;
+                                    return (
+                                      <div
+                                        key={cat}
+                                        className={`h-full ${catColors[ci % catColors.length]} ${isCorrect ? "ring-2 ring-success ring-inset" : ""} flex items-center justify-center text-[10px] font-bold text-white transition-all duration-700`}
+                                        style={{ width: `${pct}%` }}
+                                        title={`${cat}: ${pct}%`}
+                                      >
+                                        {pct >= 15 ? `${pct}%` : ""}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </>
                         );
-                      })}
+                      })()}
                       <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
                     </div>
                   ) : (

@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import LessonPreview from "./pages/LessonPreview";
 import TeacherLiveSession from "./pages/TeacherLiveSession";
+import PastSessionReview from "./pages/PastSessionReview";
 import JoinSession from "./pages/JoinSession";
 import StudentLiveView from "./pages/StudentLiveView";
 import ClassDetail from "./pages/ClassDetail";
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/live/student" element={<AuthGuard><StudentLiveView /></AuthGuard>} />
         <Route path="/lesson/preview" element={<AuthGuard><LessonPreview /></AuthGuard>} />
         <Route path="/live/host" element={<AuthGuard><TeacherLiveSession /></AuthGuard>} />
+        <Route path="/live/review" element={<AuthGuard><PastSessionReview /></AuthGuard>} />
         <Route element={<AuthGuard><Layout /></AuthGuard>}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/classes" element={<Classes />} />

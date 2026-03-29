@@ -50,7 +50,7 @@ export default function LiveSessions() {
         .select("id, session_code, started_at, ended_at, class_id, lesson_version_id")
         .eq("host_teacher_id", appUserId)
         .order("started_at", { ascending: false })
-        .limit(20),
+        .limit(50),
       supabase.from("classes").select("id, name, organization_id").eq("teacher_id", appUserId).order("created_at", { ascending: false }),
       supabase.from("courses").select("id, title").order("title"),
       supabase.from("units").select("id, title, course_id").order("sequence_no"),
@@ -363,7 +363,7 @@ export default function LiveSessions() {
                     >
                       {status}
                     </span>
-                    {status === "active" && (
+                    {status === "active" ? (
                       <div className="flex gap-2">
                         <button
                           onClick={() => navigate(`/live/host?session=${s.id}`)}
@@ -379,6 +379,14 @@ export default function LiveSessions() {
                           End
                         </button>
                       </div>
+                    ) : (
+                      <button
+                        onClick={() => navigate(`/live/review?session=${s.id}`)}
+                        className="px-4 py-2 border border-border text-foreground rounded-xl text-sm font-semibold hover:bg-secondary transition-colors flex items-center gap-1.5"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Review
+                      </button>
                     )}
                   </div>
                 </div>
