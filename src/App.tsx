@@ -29,6 +29,7 @@ import SchoolTeachers from "./pages/school-admin/SchoolTeachers";
 import SchoolStudents from "./pages/school-admin/SchoolStudents";
 import SchoolClasses from "./pages/school-admin/SchoolClasses";
 import SchoolProfile from "./pages/school-admin/SchoolProfile";
+import AccountSettings from "./pages/AccountSettings";
 
 export default function App() {
   return (
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/admin/curriculum" element={<ManageCurriculum />} />
           <Route path="/admin/users" element={<ManageUsers />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/account" element={<AccountSettings />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
