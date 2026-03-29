@@ -593,6 +593,38 @@ export default function StudentLiveView() {
             ))}
           </div>
         )}
+        {revealedResults.drag_drop_aggregation && (() => {
+          const agg = revealedResults.drag_drop_aggregation as { categories: string[]; items: { text: string; correct_category: string; distribution: Record<string, number> }[] };
+          const catColors = ["bg-primary/70", "bg-blue-500/70", "bg-amber-500/70", "bg-emerald-500/70", "bg-rose-500/70", "bg-violet-500/70"];
+          return (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2 mb-1">
+                {agg.categories.map((cat, ci) => (
+                  <span key={cat} className="flex items-center gap-1 text-[10px] font-medium text-foreground">
+                    <span className={`w-2.5 h-2.5 rounded-sm ${catColors[ci % catColors.length]}`} />
+                    {cat}
+                  </span>
+                ))}
+              </div>
+              {agg.items.map((item, idx) => (
+                <div key={idx} className="space-y-0.5">
+                  <p className="text-xs font-medium text-foreground">{item.text}</p>
+                  <div className="h-5 bg-secondary rounded-md overflow-hidden flex">
+                    {agg.categories.map((cat, ci) => {
+                      const pct = item.distribution[cat] || 0;
+                      if (pct === 0) return null;
+                      return (
+                        <div key={cat} className={`h-full ${catColors[ci % catColors.length]} flex items-center justify-center text-[9px] font-bold text-white`} style={{ width: `${pct}%` }}>
+                          {pct >= 20 ? `${pct}%` : ""}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
         <p className="text-xs text-muted-foreground text-center">{String(revealedResults.response_count ?? "")} total responses</p>
       </div>
     );
