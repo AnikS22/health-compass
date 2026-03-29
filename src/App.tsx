@@ -29,6 +29,7 @@ import SchoolTeachers from "./pages/school-admin/SchoolTeachers";
 import SchoolStudents from "./pages/school-admin/SchoolStudents";
 import SchoolClasses from "./pages/school-admin/SchoolClasses";
 import SchoolProfile from "./pages/school-admin/SchoolProfile";
+import AccountSettings from "./pages/AccountSettings";
 
 export default function App() {
   return (
