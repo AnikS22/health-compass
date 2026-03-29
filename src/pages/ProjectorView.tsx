@@ -587,7 +587,7 @@ export default function ProjectorView() {
                                   if (pct === 0) return null;
                                   return (
                                     <div key={cat}
-                                      className={`h-full ${catColors[ci % catColors.length]} flex items-center justify-center text-xs font-bold text-foreground transition-all duration-1000`}
+                                      className={`h-full ${catColors[ci % catColors.length]} flex items-center justify-center text-xs font-bold text-white transition-all duration-1000`}
                                       style={{ width: `${pct}%` }}
                                     >
                                       {pct >= 15 ? `${pct}%` : ""}
