@@ -50,7 +50,7 @@ export default function LiveSessions() {
         .select("id, session_code, started_at, ended_at, class_id, lesson_version_id")
         .eq("host_teacher_id", appUserId)
         .order("started_at", { ascending: false })
-        .limit(20),
+        .limit(50),
       supabase.from("classes").select("id, name, organization_id").eq("teacher_id", appUserId).order("created_at", { ascending: false }),
       supabase.from("courses").select("id, title").order("title"),
       supabase.from("units").select("id, title, course_id").order("sequence_no"),
