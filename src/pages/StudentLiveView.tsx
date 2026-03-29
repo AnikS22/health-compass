@@ -245,11 +245,19 @@ export default function StudentLiveView() {
         setSessionEnded(true);
         break;
       case "next_block":
-        setActiveIndex((i) => Math.min(i + 1, Math.max(steps.length - 1, 0)));
+        if (typeof evt.step_index === "number") {
+          setActiveIndex(Math.min(Math.max(evt.step_index, 0), Math.max(steps.length - 1, 0)));
+        } else {
+          setActiveIndex((i) => Math.min(i + 1, Math.max(steps.length - 1, 0)));
+        }
         setLocked(false); setSubmitted(false); setRevealedResults(null);
         break;
       case "previous_block":
-        setActiveIndex((i) => Math.max(i - 1, 0));
+        if (typeof evt.step_index === "number") {
+          setActiveIndex(Math.min(Math.max(evt.step_index, 0), Math.max(steps.length - 1, 0)));
+        } else {
+          setActiveIndex((i) => Math.max(i - 1, 0));
+        }
         setLocked(false); setSubmitted(false); setRevealedResults(null);
         break;
       case "goto_block":
@@ -259,6 +267,10 @@ export default function StudentLiveView() {
         }
         break;
       case "reveal_results":
+        if (typeof evt.block_id === "string") {
+          const blockIndex = steps.findIndex((s) => s.id === evt.block_id);
+          if (blockIndex >= 0) setActiveIndex(blockIndex);
+        }
         setRevealedResults(evt as Record<string, unknown>);
         break;
       case "lock":
@@ -327,11 +339,16 @@ export default function StudentLiveView() {
       let idx = 0;
       let isStarted = false;
       for (const evt of events) {
+        const payload = (evt.event_payload as Record<string, unknown>) ?? {};
         if (evt.event_type === "session_started") isStarted = true;
-        if (evt.event_type === "next_block") idx = Math.min(idx + 1, blocks.length - 1);
+        if (evt.event_type === "next_block") {
+          idx = typeof payload.step_index === "number"
+            ? Math.min(Math.max(payload.step_index, 0), Math.max(blocks.length - 1, 0))
+            : Math.min(idx + 1, blocks.length - 1);
+        }
         else if (evt.event_type === "previous_block") idx = Math.max(idx - 1, 0);
-        else if (evt.event_type === "goto_block" && typeof (evt.event_payload as Record<string, unknown>).step_index === "number") {
-          idx = (evt.event_payload as Record<string, unknown>).step_index as number;
+        else if (evt.event_type === "goto_block" && typeof payload.step_index === "number") {
+          idx = payload.step_index as number;
         }
         else if (evt.event_type === "lock") setLocked(true);
         else if (evt.event_type === "unlock") setLocked(false);
@@ -561,6 +578,20 @@ export default function StudentLiveView() {
             </div>
           );
         })}
+        {Array.isArray(revealedResults.peer_compare_tallies) && (revealedResults.peer_compare_tallies as Array<{ option: string; count: number; students?: string[] }>).map((t, i) => {
+          const maxC = Math.max(...(revealedResults.peer_compare_tallies as Array<{ option: string; count: number }>).map(x => x.count), 1);
+          return (
+            <div key={i} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-foreground">{t.option}</span>
+                <span className="font-bold text-foreground">{t.count}</span>
+              </div>
+              <div className="h-5 bg-secondary rounded-lg overflow-hidden">
+                <div className="h-full bg-primary/70 rounded-lg transition-all duration-700" style={{ width: `${Math.max((t.count / maxC) * 100, 3)}%` }} />
+              </div>
+            </div>
+          );
+        })}
         {Array.isArray(revealedResults.scenario_tallies) && (revealedResults.scenario_tallies as Array<{ choice: string; count: number }>).map((t, i) => {
           const maxC = Math.max(...(revealedResults.scenario_tallies as Array<{ choice: string; count: number }>).map(x => x.count), 1);
           return (
@@ -666,6 +697,21 @@ export default function StudentLiveView() {
               <span className="text-4xl">🔒</span>
               <p className="text-destructive font-bold">Responses are locked</p>
               <p className="text-sm text-muted-foreground">Wait for your teacher to unlock</p>
+            </div>
+          ) : revealedResults ? (
+            <div className="space-y-4 animate-in fade-in duration-300">
+              {submitted ? (
+                <div className="rounded-2xl border-2 border-success/20 bg-success/5 p-6 text-center space-y-2">
+                  <span className="text-3xl">✅</span>
+                  <p className="text-success font-bold">Response submitted!</p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border-2 border-primary/20 bg-primary/5 p-6 text-center space-y-2">
+                  <span className="text-3xl">📊</span>
+                  <p className="text-primary font-bold">Teacher revealed class results</p>
+                </div>
+              )}
+              {renderRevealedResults()}
             </div>
           ) : submitted ? (
             <div className="space-y-4 animate-in fade-in duration-300">
