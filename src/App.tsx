@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import LessonPreview from "./pages/LessonPreview";
 import TeacherLiveSession from "./pages/TeacherLiveSession";
+import PastSessionReview from "./pages/PastSessionReview";
 import JoinSession from "./pages/JoinSession";
 import StudentLiveView from "./pages/StudentLiveView";
 import ClassDetail from "./pages/ClassDetail";
