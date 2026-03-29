@@ -132,6 +132,67 @@ export default function StudentLiveView() {
   const [revealedResults, setRevealedResults] = useState<Record<string, unknown> | null>(null);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
 
+  // Mark presence on mount, clear on unmount / tab close
+  useEffect(() => {
+    if (!sessionId || !appUserId) return;
+
+    // Clear left_at to mark as present
+    const markPresent = () => {
+      supabase
+        .from("live_session_participants")
+        .update({ left_at: null } as any)
+        .eq("live_session_id", sessionId)
+        .eq("user_id", appUserId)
+        .then();
+    };
+
+    // Cache auth token for use in beforeunload (can't do async there)
+    let cachedToken = (supabase as any).supabaseKey as string;
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.access_token) cachedToken = data.session.access_token;
+    });
+
+    const anonKey = (supabase as any).supabaseKey as string;
+    const baseUrl = (supabase as any).supabaseUrl as string;
+
+    // Set left_at to mark as gone - uses keepalive fetch for tab close reliability
+    const markLeftSync = () => {
+      const url = `${baseUrl}/rest/v1/live_session_participants?live_session_id=eq.${sessionId}&user_id=eq.${appUserId}`;
+      const body = JSON.stringify({ left_at: new Date().toISOString() });
+      fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal",
+          apikey: anonKey,
+          Authorization: `Bearer ${cachedToken}`,
+        },
+        body,
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    markPresent();
+
+    const handleBeforeUnload = () => markLeftSync();
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Heartbeat every 30s to stay "present"
+    const heartbeat = setInterval(markPresent, 30000);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      clearInterval(heartbeat);
+      // Mark left on component unmount (navigating away)
+      supabase
+        .from("live_session_participants")
+        .update({ left_at: new Date().toISOString() } as any)
+        .eq("live_session_id", sessionId)
+        .eq("user_id", appUserId)
+        .then();
+    };
+  }, [sessionId, appUserId]);
+
   useEffect(() => {
     if (!sessionId) return;
     loadSession();
