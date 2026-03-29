@@ -9,6 +9,7 @@ import LiveSessions from "./pages/LiveSessions";
 import Assignments from "./pages/Assignments";
 import Reports from "./pages/Reports";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import LessonPreview from "./pages/LessonPreview";
 import TeacherLiveSession from "./pages/TeacherLiveSession";
@@ -35,6 +36,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/live/student" element={<AuthGuard><StudentLiveView /></AuthGuard>} />
         <Route path="/lesson/preview" element={<AuthGuard><LessonPreview /></AuthGuard>} />
         <Route path="/live/host" element={<AuthGuard><TeacherLiveSession /></AuthGuard>} />
