@@ -10,6 +10,7 @@ import {
   Podcast,
   Building2,
   GraduationCap,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
