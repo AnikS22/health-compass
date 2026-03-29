@@ -176,6 +176,26 @@ export default function TeacherLiveSession() {
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
+  // Presenter BroadcastChannel - sync state to projector window
+  useEffect(() => {
+    if (!sessionId) return;
+    const bc = new BroadcastChannel(`presenter-${sessionId}`);
+    presenterChannelRef.current = bc;
+    return () => bc.close();
+  }, [sessionId]);
+
+  // Sync state to projector whenever relevant state changes
+  useEffect(() => {
+    presenterChannelRef.current?.postMessage({
+      type: "sync_state",
+      currentStep,
+      showResults,
+      locked,
+      timerSeconds,
+      timerRunning,
+    });
+  }, [currentStep, showResults, locked, timerSeconds, timerRunning]);
+
   // Keyboard shortcuts
   useEffect(() => {
     if (!started) return;
