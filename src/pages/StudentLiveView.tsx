@@ -146,11 +146,9 @@ export default function StudentLiveView() {
         .then();
     };
 
-    // Broadcast join event so teacher sees it instantly
-    const channel = supabase.channel(`live-session-${sessionId}`);
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        // Fetch own participant record to broadcast
+    // Broadcast join event after a short delay (lets the teacher_event channel connect first)
+    const joinTimeout = setTimeout(() => {
+      if (broadcastRef.current) {
         supabase
           .from("live_session_participants")
           .select("id, display_name, joined_at, user_id")
@@ -159,7 +157,7 @@ export default function StudentLiveView() {
           .maybeSingle()
           .then(({ data }) => {
             if (data) {
-              channel.send({
+              broadcastRef.current?.send({
                 type: "broadcast",
                 event: "student_joined",
                 payload: data,
@@ -167,7 +165,7 @@ export default function StudentLiveView() {
             }
           });
       }
-    });
+    }, 2000);
 
     // Cache auth token for use in beforeunload (can't do async there)
     let cachedToken = (supabase as any).supabaseKey as string;
