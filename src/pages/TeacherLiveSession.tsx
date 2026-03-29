@@ -479,6 +479,32 @@ export default function TeacherLiveSession() {
     return options.map(o => ({ option: o, count: tally[o]?.count ?? 0, students: tally[o]?.students ?? [] }));
   }
 
+  function getPeerCompareTallies(): { option: string; count: number; students: string[] }[] | null {
+    const options = ((config.options as Array<{ id: string; text: string }>) ?? []);
+    if (options.length === 0) return null;
+
+    const tally: Record<string, { count: number; students: string[] }> = {};
+    options.forEach((opt) => {
+      tally[opt.id] = { count: 0, students: [] };
+    });
+
+    for (const r of liveResponses) {
+      const payload = r.response_payload;
+      const name = getStudentName(r.user_id);
+      const answer = (payload.selected_option_id ?? payload.selected_option ?? payload.answer) as string | undefined;
+      if (answer && tally[answer]) {
+        tally[answer].count++;
+        tally[answer].students.push(name);
+      }
+    }
+
+    return options.map((opt) => ({
+      option: opt.text,
+      count: tally[opt.id]?.count ?? 0,
+      students: tally[opt.id]?.students ?? [],
+    }));
+  }
+
   // Aggregate MCQ results
   function getMcqTallies(): { option: string; count: number; students: string[] }[] {
     const options = ((config.options as Array<{ id: string; text: string }>) ?? []);
@@ -568,11 +594,16 @@ export default function TeacherLiveSession() {
   function handleRevealResults() {
     setShowResults(true);
     const bt = step?.block_type ?? "";
+    const peerCompareTallies = bt === "peer_compare" ? getPeerCompareTallies() : null;
+    const includeTextResponses = ["short_answer", "reasoning_response", "exit_ticket", "debate", "red_team", "group_challenge", "peer_review"].includes(bt)
+      || (bt === "peer_compare" && !peerCompareTallies);
+
     broadcast("reveal_results", {
       block_id: step?.id,
       tallies: (bt === "poll" || bt === "multi_select") ? getPollTallies() : undefined,
       mcq_tallies: (bt === "micro_challenge" || bt === "mcq") ? getMcqTallies() : undefined,
-      text_responses: ["short_answer", "reasoning_response", "exit_ticket", "debate", "peer_compare", "red_team", "group_challenge", "peer_review"].includes(bt)
+      peer_compare_tallies: bt === "peer_compare" ? peerCompareTallies ?? undefined : undefined,
+      text_responses: includeTextResponses
         ? getTextResponses().slice(0, 30).map(r => r.text)
         : undefined,
       scenario_tallies: bt === "scenario" ? getScenarioTallies() : undefined,
@@ -768,14 +799,52 @@ export default function TeacherLiveSession() {
                 <div className="space-y-4">
                   <p className="text-2xl font-bold text-foreground">{(config.prompt as string) ?? ""}</p>
                   {showResults ? (
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {getTextResponses().map((r, i) => (
-                        <div key={i} className="rounded-xl border border-border bg-card p-4">
-                          <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.userId)}</p>
-                          <p className="text-sm text-foreground">{r.text}</p>
+                    (() => {
+                      const peerCompareTallies = getPeerCompareTallies();
+                      const textResponses = getTextResponses();
+
+                      if (peerCompareTallies && peerCompareTallies.length > 0) {
+                        const maxCount = Math.max(...peerCompareTallies.map((x) => x.count), 1);
+                        return (
+                          <div className="space-y-3">
+                            {peerCompareTallies.map((t, i) => (
+                              <div key={i} className="space-y-1">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="font-medium text-foreground flex items-center gap-2">
+                                    <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{String.fromCharCode(65 + i)}</span>
+                                    {t.option}
+                                  </span>
+                                  <span className="font-bold text-foreground">{t.count}</span>
+                                </div>
+                                <div className="h-8 bg-secondary rounded-xl overflow-hidden">
+                                  <div
+                                    className="h-full bg-primary/80 rounded-xl transition-all duration-700 ease-out"
+                                    style={{ width: `${Math.max((t.count / maxCount) * 100, 2)}%` }}
+                                  />
+                                </div>
+                                {t.students.length > 0 && (
+                                  <p className="text-xs text-muted-foreground pl-9">{t.students.join(", ")}</p>
+                                )}
+                              </div>
+                            ))}
+                            <p className="text-sm text-muted-foreground text-center pt-2">{liveResponses.length} response{liveResponses.length !== 1 ? "s" : ""}</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {textResponses.length > 0 ? textResponses.map((r, i) => (
+                            <div key={i} className="rounded-xl border border-border bg-card p-4">
+                              <p className="text-xs text-primary font-bold mb-1">{getStudentName(r.userId)}</p>
+                              <p className="text-sm text-foreground">{r.text}</p>
+                            </div>
+                          )) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">No responses yet.</p>
+                          )}
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })()
                   ) : (
                     <>
                       {((config.options as Array<{ id: string; text: string }>) ?? []).length > 0 && (
