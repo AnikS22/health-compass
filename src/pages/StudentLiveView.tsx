@@ -157,11 +157,7 @@ export default function StudentLiveView() {
         apikey: (supabase as any).supabaseKey,
         Authorization: `Bearer ${(supabase as any).supabaseKey}`,
       };
-      // Try sendBeacon first (works on tab close), fall back to fetch
-      const blob = new Blob([body], { type: "application/json" });
-      if (navigator.sendBeacon) {
-        // sendBeacon doesn't support custom headers, so use fetch with keepalive
-      }
+      // Use fetch with keepalive for reliability on tab close
       fetch(url, { method: "PATCH", headers, body, keepalive: true }).catch(() => {});
     };
 
