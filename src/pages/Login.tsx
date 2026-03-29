@@ -160,7 +160,34 @@ export default function Login() {
           </button>
         </form>
 
+        {mode === "signin" && !forgotMode && (
+          <button type="button" onClick={() => setForgotMode(true)}
+            className="w-full text-center text-sm text-primary hover:underline font-medium">
+            Forgot your password?
+          </button>
+        )}
 
+        {forgotMode && (
+          <div className="space-y-3 p-4 rounded-xl border border-border bg-card">
+            <p className="text-sm font-semibold text-foreground">Reset your password</p>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setForgotMode(false); setStatus(""); }}
+                className="flex-1 py-2.5 text-sm font-bold rounded-xl border border-border text-muted-foreground hover:text-foreground transition-colors">
+                Cancel
+              </button>
+              <button type="button" disabled={loading || !resetEmail} onClick={handleForgotPassword}
+                className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50">
+                {loading ? "Sending…" : "Send Reset Link"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {status && (
           <p className={`text-center text-sm font-medium ${status.includes("Check your email") ? "text-green-600" : "text-destructive"}`}>
