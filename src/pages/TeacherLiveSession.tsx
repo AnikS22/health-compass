@@ -416,7 +416,7 @@ export default function TeacherLiveSession() {
     return liveResponses
       .map(r => {
         const p = r.response_payload;
-        const text = (p.text ?? p.answer ?? p.argument ?? p.post ?? "") as string;
+        const text = (p.text ?? p.answer ?? p.argument ?? p.post ?? p.feedback ?? p.review ?? p.counter_argument ?? "") as string;
         return { text, userId: r.user_id };
       })
       .filter(r => r.text.length > 0);
