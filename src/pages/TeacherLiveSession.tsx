@@ -119,7 +119,8 @@ export default function TeacherLiveSession() {
         .select("id, user_id, response_payload, submitted_at")
         .eq("live_session_id", sessionId!)
         .eq("lesson_block_id", blockId)
-        .order("submitted_at", { ascending: true });
+        .order("submitted_at", { ascending: true })
+        .limit(200);
       if (mounted && data) {
         setLiveResponses(data as unknown as LiveResponse[]);
         setResponseCount(data.length);
@@ -1120,7 +1121,7 @@ export default function TeacherLiveSession() {
 
           {/* Response details sidebar */}
           {isInteractive && liveResponses.length > 0 && (
-            <div className="p-3 border-b border-border max-h-48 overflow-y-auto">
+            <div className="p-3 border-b border-border max-h-64 overflow-y-auto">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1 mb-2">
                 Responses ({liveResponses.length})
               </p>
