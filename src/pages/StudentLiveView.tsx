@@ -146,6 +146,29 @@ export default function StudentLiveView() {
         .then();
     };
 
+    // Broadcast join event so teacher sees it instantly
+    const channel = supabase.channel(`live-session-${sessionId}`);
+    channel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        // Fetch own participant record to broadcast
+        supabase
+          .from("live_session_participants")
+          .select("id, display_name, joined_at, user_id")
+          .eq("live_session_id", sessionId)
+          .eq("user_id", appUserId)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) {
+              channel.send({
+                type: "broadcast",
+                event: "student_joined",
+                payload: data,
+              });
+            }
+          });
+      }
+    });
+
     // Cache auth token for use in beforeunload (can't do async there)
     let cachedToken = (supabase as any).supabaseKey as string;
     supabase.auth.getSession().then(({ data }) => {

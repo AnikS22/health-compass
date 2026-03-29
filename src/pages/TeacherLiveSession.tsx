@@ -104,6 +104,26 @@ export default function TeacherLiveSession() {
     return () => { supabase.removeChannel(channel); };
   }, [sessionId]);
 
+  // Poll for participants in lobby (before session starts) and during session
+  useEffect(() => {
+    if (!sessionId) return;
+    let mounted = true;
+    async function refreshParticipants() {
+      const { data: parts } = await supabase
+        .from("live_session_participants")
+        .select("id, display_name, joined_at, user_id")
+        .eq("live_session_id", sessionId!)
+        .is("left_at", null);
+      if (!mounted || !parts) return;
+      setParticipants(parts as Participant[]);
+      const nameMap: Record<string, string> = {};
+      parts.forEach((p: any) => { if (p.user_id) nameMap[p.user_id] = p.display_name; });
+      setParticipantNames(nameMap);
+    }
+    const interval = setInterval(refreshParticipants, 3000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [sessionId]);
+
   // Reset response count on step change
   useEffect(() => { setResponseCount(0); setLiveResponses([]); setShowResults(false); }, [currentStep]);
 
