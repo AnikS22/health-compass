@@ -41,6 +41,7 @@ export default function App() {
         <Route path="/live/student" element={<AuthGuard><StudentLiveView /></AuthGuard>} />
         <Route path="/lesson/preview" element={<AuthGuard><LessonPreview /></AuthGuard>} />
         <Route path="/live/host" element={<AuthGuard><TeacherLiveSession /></AuthGuard>} />
+        <Route path="/live/projector" element={<AuthGuard><ProjectorView /></AuthGuard>} />
         <Route path="/live/review" element={<AuthGuard><PastSessionReview /></AuthGuard>} />
         <Route element={<AuthGuard><Layout /></AuthGuard>}>
           <Route path="/" element={<Dashboard />} />
