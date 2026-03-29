@@ -495,6 +495,30 @@ export default function TeacherLiveSession() {
     return posts.filter(p => p.text.length > 0);
   }
 
+  // Get drag-drop category aggregation: for each item, what % placed it in each category
+  function getDragDropAggregation(): { categories: string[]; items: { id: string; text: string; correct_category: string; distribution: Record<string, number> }[] } {
+    const categories = (config.categories as string[]) ?? [];
+    const items = (config.items as Array<{ id: string; text: string; correct_category: string }>) ?? [];
+    const totalResponses = liveResponses.length || 1;
+    
+    const result = items.map(item => {
+      const dist: Record<string, number> = {};
+      categories.forEach(cat => { dist[cat] = 0; });
+      for (const r of liveResponses) {
+        const placements = (r.response_payload.placements ?? r.response_payload.answer ?? {}) as Record<string, string>;
+        const placed = placements[item.id];
+        if (placed && dist[placed] !== undefined) {
+          dist[placed]++;
+        }
+      }
+      // Convert to percentages
+      const pctDist: Record<string, number> = {};
+      categories.forEach(cat => { pctDist[cat] = Math.round((dist[cat] / totalResponses) * 100); });
+      return { id: item.id, text: item.text, correct_category: item.correct_category, distribution: pctDist };
+    });
+    return { categories, items: result };
+  }
+
   function handleRevealResults() {
     setShowResults(true);
     const bt = step?.block_type ?? "";
@@ -502,11 +526,12 @@ export default function TeacherLiveSession() {
       block_id: step?.id,
       tallies: (bt === "poll" || bt === "multi_select") ? getPollTallies() : undefined,
       mcq_tallies: (bt === "micro_challenge" || bt === "mcq") ? getMcqTallies() : undefined,
-      text_responses: ["short_answer", "reasoning_response", "exit_ticket", "debate"].includes(bt)
+      text_responses: ["short_answer", "reasoning_response", "exit_ticket", "debate", "peer_compare", "red_team", "group_challenge", "peer_review"].includes(bt)
         ? getTextResponses().slice(0, 30).map(r => r.text)
         : undefined,
       scenario_tallies: bt === "scenario" ? getScenarioTallies() : undefined,
       board_posts: (bt === "collaborative_board" || bt === "group_board") ? getBoardPosts().map(p => p.text) : undefined,
+      drag_drop_aggregation: bt === "drag_drop" ? getDragDropAggregation() : undefined,
       response_count: liveResponses.length,
     });
   }
