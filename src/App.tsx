@@ -10,6 +10,7 @@ import Assignments from "./pages/Assignments";
 import Reports from "./pages/Reports";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
+import ProjectorView from "./pages/ProjectorView";
 import NotFound from "./pages/NotFound";
 import LessonPreview from "./pages/LessonPreview";
 import TeacherLiveSession from "./pages/TeacherLiveSession";
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/live/student" element={<AuthGuard><StudentLiveView /></AuthGuard>} />
         <Route path="/lesson/preview" element={<AuthGuard><LessonPreview /></AuthGuard>} />
         <Route path="/live/host" element={<AuthGuard><TeacherLiveSession /></AuthGuard>} />
+        <Route path="/live/projector" element={<AuthGuard><ProjectorView /></AuthGuard>} />
         <Route path="/live/review" element={<AuthGuard><PastSessionReview /></AuthGuard>} />
         <Route element={<AuthGuard><Layout /></AuthGuard>}>
           <Route path="/" element={<Dashboard />} />

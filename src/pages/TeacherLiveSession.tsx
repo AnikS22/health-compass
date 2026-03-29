@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Lock, Unlock,
   BarChart3, Users, Timer, Radio, Copy, Check, Play,
-  Maximize, Minimize, Eye,
+  Maximize, Minimize, Eye, Monitor, StickyNote,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -80,6 +80,9 @@ export default function TeacherLiveSession() {
   const [participantNames, setParticipantNames] = useState<Record<string, string>>({});
   const presentationRef = useRef<HTMLDivElement>(null);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
+  const presenterChannelRef = useRef<BroadcastChannel | null>(null);
+  const [speakerNotes, setSpeakerNotes] = useState("");
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
 
   // Set up broadcast channel
   useEffect(() => {
@@ -172,6 +175,26 @@ export default function TeacherLiveSession() {
     document.addEventListener("fullscreenchange", handler);
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
+
+  // Presenter BroadcastChannel - sync state to projector window
+  useEffect(() => {
+    if (!sessionId) return;
+    const bc = new BroadcastChannel(`presenter-${sessionId}`);
+    presenterChannelRef.current = bc;
+    return () => bc.close();
+  }, [sessionId]);
+
+  // Sync state to projector whenever relevant state changes
+  useEffect(() => {
+    presenterChannelRef.current?.postMessage({
+      type: "sync_state",
+      currentStep,
+      showResults,
+      locked,
+      timerSeconds,
+      timerRunning,
+    });
+  }, [currentStep, showResults, locked, timerSeconds, timerRunning]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -560,6 +583,19 @@ export default function TeacherLiveSession() {
               <Eye className="w-3.5 h-3.5" /> {responseCount} responses
             </span>
           )}
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}/live/projector?session=${sessionId}`;
+              window.open(url, "projector", "noopener");
+            }}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            title="Open Projector View"
+          >
+            <Monitor className="w-4 h-4" /> Present
+          </button>
+          <button onClick={() => setShowNotesPanel(n => !n)} className={`p-1.5 rounded-lg hover:bg-muted transition-colors ${showNotesPanel ? "bg-primary/10 text-primary" : "text-muted-foreground"}`} title="Speaker Notes">
+            <StickyNote className="w-4 h-4" />
+          </button>
           <button onClick={toggleFullscreen} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             {isFullscreen ? <Minimize className="w-4 h-4 text-muted-foreground" /> : <Maximize className="w-4 h-4 text-muted-foreground" />}
           </button>
@@ -1169,6 +1205,24 @@ export default function TeacherLiveSession() {
               <p className="text-3xl font-bold text-foreground tabular-nums mt-1">
                 {Math.floor(timerSeconds / 60)}:{(timerSeconds % 60).toString().padStart(2, "0")}
               </p>
+            </div>
+          )}
+
+          {/* Speaker Notes Panel */}
+          {showNotesPanel && (
+            <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border p-4 z-10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <StickyNote className="w-3.5 h-3.5" /> Speaker Notes
+                </span>
+                <span className="text-[10px] text-muted-foreground">Only visible to you</span>
+              </div>
+              <textarea
+                value={speakerNotes}
+                onChange={(e) => setSpeakerNotes(e.target.value)}
+                placeholder="Add your speaker notes here… (only you can see these)"
+                className="w-full h-24 bg-secondary/50 border border-border rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring/50"
+              />
             </div>
           )}
         </div>
