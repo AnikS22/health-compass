@@ -146,27 +146,38 @@ export default function StudentLiveView() {
         .then();
     };
 
-    // Set left_at to mark as gone
-    const markLeft = () => {
-      // Use sendBeacon for reliability on tab close
-      const url = `${(supabase as any).supabaseUrl}/rest/v1/live_session_participants?live_session_id=eq.${sessionId}&user_id=eq.${appUserId}`;
+    // Cache auth token for use in beforeunload (can't do async there)
+    let cachedToken = (supabase as any).supabaseKey as string;
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.access_token) cachedToken = data.session.access_token;
+    });
+
+    const anonKey = (supabase as any).supabaseKey as string;
+    const baseUrl = (supabase as any).supabaseUrl as string;
+
+    // Set left_at to mark as gone - uses keepalive fetch for tab close reliability
+    const markLeftSync = () => {
+      const url = `${baseUrl}/rest/v1/live_session_participants?live_session_id=eq.${sessionId}&user_id=eq.${appUserId}`;
       const body = JSON.stringify({ left_at: new Date().toISOString() });
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal",
-        apikey: (supabase as any).supabaseKey,
-        Authorization: `Bearer ${(supabase as any).supabaseKey}`,
-      };
-      // Use fetch with keepalive for reliability on tab close
-      fetch(url, { method: "PATCH", headers, body, keepalive: true }).catch(() => {});
+      fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal",
+          apikey: anonKey,
+          Authorization: `Bearer ${cachedToken}`,
+        },
+        body,
+        keepalive: true,
+      }).catch(() => {});
     };
 
     markPresent();
 
-    const handleBeforeUnload = () => markLeft();
+    const handleBeforeUnload = () => markLeftSync();
     window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // Also mark present periodically (heartbeat every 30s)
+    // Heartbeat every 30s to stay "present"
     const heartbeat = setInterval(markPresent, 30000);
 
     return () => {
