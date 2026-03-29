@@ -583,6 +583,19 @@ export default function TeacherLiveSession() {
               <Eye className="w-3.5 h-3.5" /> {responseCount} responses
             </span>
           )}
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}/live/projector?session=${sessionId}`;
+              window.open(url, "projector", "noopener");
+            }}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            title="Open Projector View"
+          >
+            <Monitor className="w-4 h-4" /> Present
+          </button>
+          <button onClick={() => setShowNotesPanel(n => !n)} className={`p-1.5 rounded-lg hover:bg-muted transition-colors ${showNotesPanel ? "bg-primary/10 text-primary" : "text-muted-foreground"}`} title="Speaker Notes">
+            <StickyNote className="w-4 h-4" />
+          </button>
           <button onClick={toggleFullscreen} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             {isFullscreen ? <Minimize className="w-4 h-4 text-muted-foreground" /> : <Maximize className="w-4 h-4 text-muted-foreground" />}
           </button>
