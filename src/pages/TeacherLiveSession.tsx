@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Lock, Unlock,
   BarChart3, Users, Timer, Radio, Copy, Check, Play,
-  Maximize, Minimize, Eye,
+  Maximize, Minimize, Eye, Monitor, StickyNote,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
