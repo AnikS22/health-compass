@@ -14,6 +14,8 @@ export default function Login() {
   const [studentType, setStudentType] = useState<"school" | "independent" | null>(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
 
