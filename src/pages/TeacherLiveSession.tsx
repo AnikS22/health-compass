@@ -1337,6 +1337,45 @@ export default function TeacherLiveSession() {
           </div>
         </aside>
       </div>
+
+      {/* End Session Modal */}
+      {showEndModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-2xl border border-border p-8 max-w-md w-full mx-4 space-y-6 shadow-2xl">
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-extrabold text-foreground">End Session?</h2>
+              <p className="text-sm text-muted-foreground">
+                {collectData
+                  ? `${responseCount} responses have been collected. You can review them anytime from Past Sessions.`
+                  : "This session will be marked as ended."}
+              </p>
+            </div>
+            <div className="space-y-3">
+              {collectData && (
+                <button
+                  onClick={() => handleEndSession(true)}
+                  className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  End & Review Responses
+                </button>
+              )}
+              <button
+                onClick={() => handleEndSession(false)}
+                className="w-full px-6 py-3 border border-border rounded-xl text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
+              >
+                End Session
+              </button>
+              <button
+                onClick={() => setShowEndModal(false)}
+                className="w-full px-6 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
