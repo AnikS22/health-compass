@@ -17,6 +17,7 @@ interface AuthContextType {
   role: string | null;
   roles: string[];
   appUserId: string | null;
+  waitlistStatus: string | null;
   signOut: () => Promise<void>;
 }
 
