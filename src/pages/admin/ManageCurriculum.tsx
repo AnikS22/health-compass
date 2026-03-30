@@ -604,10 +604,14 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-foreground">Slide Images ({slideUrls.length})</label>
-          <label className="text-xs text-primary hover:underline font-medium cursor-pointer">
-            + Upload Slides
-            <input type="file" accept="image/*" multiple className="hidden" onChange={handleSlideUpload} />
-          </label>
+          {pptxProcessing ? (
+            <span className="text-xs text-muted-foreground font-medium animate-pulse">Processing PPTX...</span>
+          ) : (
+            <label className="text-xs text-primary hover:underline font-medium cursor-pointer">
+              + Upload Slides
+              <input type="file" accept="image/*,.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple className="hidden" onChange={handleSlideUpload} />
+            </label>
+          )}
         </div>
         <p className="text-[10px] text-muted-foreground">Export your PowerPoint as images (File → Export → Images), then upload them here in order.</p>
         {slideUrls.length === 0 && (
