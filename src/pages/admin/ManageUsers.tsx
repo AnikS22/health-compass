@@ -399,13 +399,39 @@ function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSel
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => toggleActive(u)}
-              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-            >
-              {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
-              {u.is_active ? "Deactivate" : "Activate"}
-            </button>
+            {u.waitlist_status === 'pending' && (
+              <>
+                <button
+                  onClick={() => updateWaitlistStatus(u.id, 'approved')}
+                  className="flex items-center gap-1 text-xs font-bold text-green-600 hover:underline"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> Approve
+                </button>
+                <button
+                  onClick={() => updateWaitlistStatus(u.id, 'rejected')}
+                  className="flex items-center gap-1 text-xs font-bold text-destructive hover:underline"
+                >
+                  <XCircle className="w-3.5 h-3.5" /> Reject
+                </button>
+              </>
+            )}
+            {u.waitlist_status === 'rejected' && (
+              <button
+                onClick={() => updateWaitlistStatus(u.id, 'approved')}
+                className="flex items-center gap-1 text-xs font-bold text-green-600 hover:underline"
+              >
+                <CheckCircle className="w-3.5 h-3.5" /> Approve
+              </button>
+            )}
+            {u.waitlist_status === 'approved' && (
+              <button
+                onClick={() => toggleActive(u)}
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                {u.is_active ? "Deactivate" : "Activate"}
+              </button>
+            )}
             {/* Toggle self-paced: show "Make Self-Paced" or "Remove Self-Paced" */}
             {u.roles.includes("student") && (
               !u.organization_id ? (
