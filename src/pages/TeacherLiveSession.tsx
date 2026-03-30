@@ -202,18 +202,46 @@ export default function TeacherLiveSession() {
     });
   }, [currentStep, showResults, locked, timerSeconds, timerRunning, liveSlideIndex]);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts – supports presentation clickers (PageDown/PageUp/ArrowRight/ArrowLeft/Space)
   useEffect(() => {
     if (!started) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goNext(); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+      const forward = e.key === "ArrowRight" || e.key === " " || e.key === "PageDown";
+      const backward = e.key === "ArrowLeft" || e.key === "PageUp";
+
+      if (forward) {
+        e.preventDefault();
+        const block = steps[currentStep];
+        if (block?.block_type === "slides") {
+          const slideUrls = ((block.config as Record<string, unknown>)?.slide_urls as string[]) || [];
+          if (liveSlideIndex < slideUrls.length - 1) {
+            const next = liveSlideIndex + 1;
+            setLiveSlideIndex(next);
+            broadcast("navigate_slide", { slide_index: next });
+            return;
+          }
+        }
+        goNext();
+      }
+      if (backward) {
+        e.preventDefault();
+        const block = steps[currentStep];
+        if (block?.block_type === "slides") {
+          if (liveSlideIndex > 0) {
+            const prev = liveSlideIndex - 1;
+            setLiveSlideIndex(prev);
+            broadcast("navigate_slide", { slide_index: prev });
+            return;
+          }
+        }
+        goPrev();
+      }
       if (e.key === "l") toggleLock();
       if (e.key === "Escape" && isFullscreen) document.exitFullscreen();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [started, steps.length, currentStep, locked, isFullscreen]);
+  }, [started, steps.length, currentStep, locked, isFullscreen, liveSlideIndex]);
 
   // Auto-rebroadcast results as new responses arrive while results are shown
   // (actual broadcast call happens in handleRevealResults / buildResultsPayload below)
