@@ -59,6 +59,7 @@ function YouTubeEmbed({ url }: { url: string }) {
 
 /* ── Block Config Editor: renders type-specific fields ── */
 function BlockConfigEditor({ blockType, config, onChange }: { blockType: string; config: any; onChange: (c: any) => void }) {
+  const [pptxProcessing, setPptxProcessing] = useState(false);
   if (blockType === "video") {
     const checkpoints = Array.isArray(config.checkpoints) ? config.checkpoints : [];
     const CHECKPOINT_BLOCK_TYPES = BLOCK_TYPES.filter(t => t !== "video");
