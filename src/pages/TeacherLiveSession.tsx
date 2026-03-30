@@ -87,6 +87,7 @@ export default function TeacherLiveSession() {
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [collectData, setCollectData] = useState(true);
   const [showEndModal, setShowEndModal] = useState(false);
+  const prevResponseCountRef = useRef(0);
 
   // Set up broadcast channel
   useEffect(() => {
@@ -213,6 +214,21 @@ export default function TeacherLiveSession() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [started, steps.length, currentStep, locked, isFullscreen]);
+
+  // Auto-rebroadcast results as new responses arrive while results are shown
+  // (actual broadcast call happens in handleRevealResults / buildResultsPayload below)
+  useEffect(() => {
+    if (!showResults || !started || !steps[currentStep]) return;
+    if (liveResponses.length !== prevResponseCountRef.current) {
+      prevResponseCountRef.current = liveResponses.length;
+      // Re-broadcast via the broadcastRef channel
+      broadcastRef.current?.send({
+        type: "broadcast",
+        event: "teacher_event",
+        payload: { event_type: "reveal_results", response_count: liveResponses.length },
+      });
+    }
+  }, [showResults, liveResponses.length, started, currentStep, steps]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -622,16 +638,6 @@ export default function TeacherLiveSession() {
     broadcast("reveal_results", buildResultsPayload());
   }
 
-  // Auto-rebroadcast results as new responses arrive while results are shown
-  const prevResponseCountRef = useRef(0);
-  useEffect(() => {
-    if (!showResults || !step) return;
-    // Only rebroadcast when response count actually changes
-    if (liveResponses.length !== prevResponseCountRef.current) {
-      prevResponseCountRef.current = liveResponses.length;
-      broadcast("reveal_results", buildResultsPayload());
-    }
-  }, [showResults, liveResponses.length]);
 
   return (
     <div ref={presentationRef} className="min-h-screen bg-background flex flex-col">
