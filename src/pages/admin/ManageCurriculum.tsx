@@ -35,6 +35,7 @@ const GRADE_BANDS = ["K-2", "3-5", "6-8", "9-10", "11-12"];
 
 function blockIcon(type: string) {
   if (type === "video") return <Video className="w-3.5 h-3.5" />;
+  if (type === "slides") return <Presentation className="w-3.5 h-3.5" />;
   if (type === "mcq" || type === "multi_select" || type === "poll") return <HelpCircle className="w-3.5 h-3.5" />;
   if (type === "short_answer" || type === "reasoning_response") return <MessageSquare className="w-3.5 h-3.5" />;
   return <FileText className="w-3.5 h-3.5" />;
