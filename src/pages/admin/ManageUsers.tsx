@@ -145,8 +145,11 @@ export default function ManageUsers() {
       u.display_name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
     const matchRole = !roleFilter || u.roles.includes(roleFilter);
-    return matchSearch && matchRole;
+    const matchWaitlist = !waitlistFilter || u.waitlist_status === waitlistFilter;
+    return matchSearch && matchRole && matchWaitlist;
   });
+
+  const pendingCount = users.filter(u => u.waitlist_status === 'pending').length;
 
   return (
     <div className="p-6 space-y-6">
