@@ -197,6 +197,7 @@ export default function TeacherLiveSession() {
       locked,
       timerSeconds,
       timerRunning,
+      liveSlideIndex,
     });
   }, [currentStep, showResults, locked, timerSeconds, timerRunning]);
 
