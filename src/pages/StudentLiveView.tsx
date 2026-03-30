@@ -110,6 +110,7 @@ function isInteractiveBlock(type: string, config?: Record<string, unknown>) {
 // Blocks that are display-only (no student submission needed)
 function isDisplayOnlyBlock(type: string, config?: Record<string, unknown>) {
   if (type === "concept_reveal") return true;
+  if (type === "slides") return true;
   if (type === "video" && (!config || !videoHasCheckpoints(config))) return true;
   return false;
 }
