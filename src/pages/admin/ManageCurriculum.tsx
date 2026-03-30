@@ -613,7 +613,7 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
             </label>
           )}
         </div>
-        <p className="text-[10px] text-muted-foreground">Export your PowerPoint as images (File → Export → Images), then upload them here in order.</p>
+        <p className="text-[10px] text-muted-foreground">Upload a .pptx file directly or export slides as images (PNG/JPG) and upload them in order.</p>
         {slideUrls.length === 0 && (
           <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
             <p className="text-sm text-muted-foreground">No slides yet. Upload PNG/JPG images of your slides.</p>
