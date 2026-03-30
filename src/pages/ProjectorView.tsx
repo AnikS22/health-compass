@@ -702,11 +702,27 @@ export default function ProjectorView() {
               </div>
             )}
 
+            {/* SLIDES */}
+            {step.block_type === "slides" && (() => {
+              const slideUrls = (config.slide_urls as string[]) ?? [];
+              const total = slideUrls.length;
+              if (total === 0) return <p className="text-2xl text-muted-foreground text-center">No slides uploaded.</p>;
+              const safeIdx = Math.min(slideIndex, total - 1);
+              return (
+                <div className="space-y-4">
+                  <div className="relative bg-black rounded-2xl overflow-hidden aspect-[16/9] max-w-5xl mx-auto flex items-center justify-center">
+                    <img src={slideUrls[safeIdx]} alt={`Slide ${safeIdx + 1}`} className="max-w-full max-h-full object-contain" draggable={false} />
+                  </div>
+                  <p className="text-center text-muted-foreground text-lg font-medium">Slide {safeIdx + 1} of {total}</p>
+                </div>
+              );
+            })()}
+
             {/* FALLBACK for unhandled block types */}
             {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare",
               "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board",
               "group_board", "scenario", "dilemma_tree", "drag_drop", "matching", "drawing",
-              "red_team", "group_challenge", "peer_review"].includes(step.block_type) && (
+              "red_team", "group_challenge", "peer_review", "slides"].includes(step.block_type) && (
               <div className="rounded-3xl border border-border bg-muted/50 p-10 text-center space-y-4">
                 <span className="text-6xl">{getBlockIcon(step.block_type)}</span>
                 <p className="text-2xl font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>

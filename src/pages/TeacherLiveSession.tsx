@@ -197,8 +197,9 @@ export default function TeacherLiveSession() {
       locked,
       timerSeconds,
       timerRunning,
+      slideIndex: liveSlideIndex,
     });
-  }, [currentStep, showResults, locked, timerSeconds, timerRunning]);
+  }, [currentStep, showResults, locked, timerSeconds, timerRunning, liveSlideIndex]);
 
   // Keyboard shortcuts
   useEffect(() => {
