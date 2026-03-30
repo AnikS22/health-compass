@@ -526,7 +526,8 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
     async function handleSlideUpload(e: React.ChangeEvent<HTMLInputElement>) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
-      setUploading(true);
+      const btn = e.target.parentElement;
+      if (btn) btn.textContent = "Uploading...";
       const newUrls: string[] = [...slideUrls];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -539,7 +540,6 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
         }
       }
       onChange({ ...config, slide_urls: newUrls });
-      setUploading(false);
       e.target.value = "";
     }
 
@@ -560,9 +560,9 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-foreground">Slide Images ({slideUrls.length})</label>
-          <label className={`text-xs text-primary hover:underline font-medium cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-            {uploading ? "Uploading..." : "+ Upload Slides"}
-            <input type="file" accept="image/*" multiple className="hidden" onChange={handleSlideUpload} disabled={uploading} />
+          <label className="text-xs text-primary hover:underline font-medium cursor-pointer">
+            + Upload Slides
+            <input type="file" accept="image/*" multiple className="hidden" onChange={handleSlideUpload} />
           </label>
         </div>
         <p className="text-[10px] text-muted-foreground">Export your PowerPoint as images (File → Export → Images), then upload them here in order.</p>
