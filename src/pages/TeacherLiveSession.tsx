@@ -595,14 +595,13 @@ export default function TeacherLiveSession() {
     return { categories, items: result };
   }
 
-  function handleRevealResults() {
-    setShowResults(true);
+  function buildResultsPayload() {
     const bt = step?.block_type ?? "";
     const peerCompareTallies = bt === "peer_compare" ? getPeerCompareTallies() : null;
     const includeTextResponses = ["short_answer", "reasoning_response", "exit_ticket", "debate", "red_team", "group_challenge", "peer_review"].includes(bt)
       || (bt === "peer_compare" && !peerCompareTallies);
 
-    broadcast("reveal_results", {
+    return {
       block_id: step?.id,
       tallies: (bt === "poll" || bt === "multi_select") ? getPollTallies() : undefined,
       mcq_tallies: (bt === "micro_challenge" || bt === "mcq") ? getMcqTallies() : undefined,
@@ -614,8 +613,24 @@ export default function TeacherLiveSession() {
       board_posts: (bt === "collaborative_board" || bt === "group_board") ? getBoardPosts().map(p => p.text) : undefined,
       drag_drop_aggregation: bt === "drag_drop" ? getDragDropAggregation() : undefined,
       response_count: liveResponses.length,
-    });
+    };
   }
+
+  function handleRevealResults() {
+    setShowResults(true);
+    broadcast("reveal_results", buildResultsPayload());
+  }
+
+  // Auto-rebroadcast results as new responses arrive while results are shown
+  const prevResponseCountRef = useRef(0);
+  useEffect(() => {
+    if (!showResults || !step) return;
+    // Only rebroadcast when response count actually changes
+    if (liveResponses.length !== prevResponseCountRef.current) {
+      prevResponseCountRef.current = liveResponses.length;
+      broadcast("reveal_results", buildResultsPayload());
+    }
+  }, [showResults, liveResponses.length]);
 
   return (
     <div ref={presentationRef} className="min-h-screen bg-background flex flex-col">
