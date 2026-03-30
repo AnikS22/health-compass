@@ -87,6 +87,7 @@ export default function TeacherLiveSession() {
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [collectData, setCollectData] = useState(true);
   const [showEndModal, setShowEndModal] = useState(false);
+  const prevResponseCountRef = useRef(0);
 
   // Set up broadcast channel
   useEffect(() => {
