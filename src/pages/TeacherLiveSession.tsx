@@ -216,10 +216,17 @@ export default function TeacherLiveSession() {
   }, [started, steps.length, currentStep, locked, isFullscreen]);
 
   // Auto-rebroadcast results as new responses arrive while results are shown
+  // (actual broadcast call happens in handleRevealResults / buildResultsPayload below)
   useEffect(() => {
     if (!showResults || !started || !steps[currentStep]) return;
     if (liveResponses.length !== prevResponseCountRef.current) {
       prevResponseCountRef.current = liveResponses.length;
+      // Re-broadcast via the broadcastRef channel
+      broadcastRef.current?.send({
+        type: "broadcast",
+        event: "teacher_event",
+        payload: { event_type: "reveal_results", response_count: liveResponses.length },
+      });
     }
   }, [showResults, liveResponses.length, started, currentStep, steps]);
 
