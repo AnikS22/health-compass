@@ -377,9 +377,19 @@ function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSel
         </td>
         <td className="px-4 py-3">
           <div className="flex flex-col gap-1">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
-              {u.is_active ? "Active" : "Inactive"}
-            </span>
+            {u.waitlist_status === 'pending' ? (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-amber-500/10 text-amber-600">
+                <Clock className="w-3 h-3" /> Waitlisted
+              </span>
+            ) : u.waitlist_status === 'rejected' ? (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-destructive/10 text-destructive">
+                <XCircle className="w-3 h-3" /> Rejected
+              </span>
+            ) : (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
+                {u.is_active ? "Active" : "Inactive"}
+              </span>
+            )}
             {!u.organization_id && u.roles.includes("student") && (
               <span className="flex items-center gap-1 text-[11px] font-medium text-primary">
                 <Compass className="w-3 h-3" /> Self-Paced
