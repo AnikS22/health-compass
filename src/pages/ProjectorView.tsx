@@ -733,7 +733,7 @@ export default function ProjectorView() {
             {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare",
               "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board",
               "group_board", "scenario", "dilemma_tree", "drag_drop", "matching", "drawing",
-              "red_team", "group_challenge", "peer_review"].includes(step.block_type) && (
+              "red_team", "group_challenge", "peer_review", "slides"].includes(step.block_type) && (
               <div className="rounded-3xl border border-border bg-muted/50 p-10 text-center space-y-4">
                 <span className="text-6xl">{getBlockIcon(step.block_type)}</span>
                 <p className="text-2xl font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>
