@@ -67,6 +67,11 @@ export default function ManageUsers() {
 
   useEffect(() => { loadUsers(); }, []);
 
+  async function updateWaitlistStatus(userId: string, status: 'approved' | 'rejected') {
+    await supabase.from("users").update({ waitlist_status: status } as any).eq("id", userId);
+    loadUsers();
+  }
+
   async function toggleActive(u: UserRow) {
     await supabase.from("users").update({ is_active: !u.is_active }).eq("id", u.id);
     loadUsers();
