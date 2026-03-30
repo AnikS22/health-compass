@@ -316,13 +316,14 @@ export default function ManageUsers() {
     </div>
   );
 }
-function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSelfPaced }: {
+function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSelfPaced, updateWaitlistStatus }: {
   u: UserRow;
   orgs: { id: string; name: string }[];
   toggleRole: (userId: string, roleKey: string, hasRole: boolean) => void;
   assignOrg: (userId: string, orgId: string) => void;
   toggleActive: (u: UserRow) => void;
   setSelfPaced: (userId: string) => void;
+  updateWaitlistStatus: (userId: string, status: 'approved' | 'rejected') => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
