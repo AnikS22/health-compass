@@ -33,6 +33,8 @@ import DrawingStep from "./DrawingStep";
 import type { DrawingConfig } from "./DrawingStep";
 import RedTeamStep from "./RedTeamStep";
 import type { RedTeamConfig } from "./RedTeamStep";
+import SlidesStep from "./SlidesStep";
+import type { SlidesConfig } from "./SlidesStep";
 import type {
   StepBlock,
   StepResponse,
@@ -271,6 +273,15 @@ export default function StepRunner({
             config={step.config as unknown as RedTeamConfig}
             body={step.body}
             onComplete={(r) => handleComplete(r)}
+          />
+        );
+      case "slides":
+        return (
+          <SlidesStep
+            config={step.config as unknown as SlidesConfig}
+            body={step.body}
+            onComplete={() => handleComplete()}
+            isLive={isLive}
           />
         );
       default:

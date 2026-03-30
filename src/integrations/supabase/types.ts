@@ -1767,6 +1767,7 @@ export type Database = {
         | "peer_review"
         | "group_challenge"
         | "video_checkpoint"
+        | "slides"
       enrollment_status: "active" | "invited" | "removed"
       moderation_reason: "pii" | "profanity" | "safety" | "other"
       moderation_resolution_status: "open" | "resolved" | "dismissed"
@@ -1935,6 +1936,7 @@ export const Constants = {
         "peer_review",
         "group_challenge",
         "video_checkpoint",
+        "slides",
       ],
       enrollment_status: ["active", "invited", "removed"],
       moderation_reason: ["pii", "profanity", "safety", "other"],

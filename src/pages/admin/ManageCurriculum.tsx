@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   BookOpen, ChevronRight, Plus, Trash2, Save, X, Play,
   Layers, FileText, Video, HelpCircle, MessageSquare,
-  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle, Upload, Download
+  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle, Upload, Download, Presentation
 } from "lucide-react";
 import { downloadAIReference } from "@/lib/aiBlockReference";
 
@@ -24,7 +24,7 @@ type Block = {
 };
 
 const BLOCK_TYPES = [
-  "video", "poll", "mcq", "multi_select", "short_answer", "scenario",
+  "video", "slides", "poll", "mcq", "multi_select", "short_answer", "scenario",
   "dilemma_tree", "drag_drop", "matching", "debate", "group_board",
   "collaborative_board", "drawing", "red_team", "exit_ticket",
   "concept_reveal", "micro_challenge", "reasoning_response", "peer_compare",
@@ -35,6 +35,7 @@ const GRADE_BANDS = ["K-2", "3-5", "6-8", "9-10", "11-12"];
 
 function blockIcon(type: string) {
   if (type === "video") return <Video className="w-3.5 h-3.5" />;
+  if (type === "slides") return <Presentation className="w-3.5 h-3.5" />;
   if (type === "mcq" || type === "multi_select" || type === "poll") return <HelpCircle className="w-3.5 h-3.5" />;
   if (type === "short_answer" || type === "reasoning_response") return <MessageSquare className="w-3.5 h-3.5" />;
   return <FileText className="w-3.5 h-3.5" />;
@@ -519,6 +520,86 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
       </div>
     );
   }
+  if (blockType === "slides") {
+    const slideUrls: string[] = Array.isArray(config.slide_urls) ? config.slide_urls : [];
+    let uploadingFlag = false;
+    
+    async function handleSlideUpload(e: React.ChangeEvent<HTMLInputElement>) {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      const btn = e.target.parentElement;
+      if (btn) btn.textContent = "Uploading...";
+      const newUrls: string[] = [...slideUrls];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const ext = file.name.split(".").pop() || "png";
+        const path = `slides/${Date.now()}-${i}.${ext}`;
+        const { error } = await supabase.storage.from("slide-images").upload(path, file, { upsert: true });
+        if (!error) {
+          const { data: urlData } = supabase.storage.from("slide-images").getPublicUrl(path);
+          newUrls.push(urlData.publicUrl);
+        }
+      }
+      onChange({ ...config, slide_urls: newUrls });
+      e.target.value = "";
+    }
+
+    function removeSlide(idx: number) {
+      const updated = slideUrls.filter((_: string, i: number) => i !== idx);
+      onChange({ ...config, slide_urls: updated });
+    }
+
+    function moveSlide(from: number, to: number) {
+      if (to < 0 || to >= slideUrls.length) return;
+      const updated = [...slideUrls];
+      const [moved] = updated.splice(from, 1);
+      updated.splice(to, 0, moved);
+      onChange({ ...config, slide_urls: updated });
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold text-foreground">Slide Images ({slideUrls.length})</label>
+          <label className="text-xs text-primary hover:underline font-medium cursor-pointer">
+            + Upload Slides
+            <input type="file" accept="image/*" multiple className="hidden" onChange={handleSlideUpload} />
+          </label>
+        </div>
+        <p className="text-[10px] text-muted-foreground">Export your PowerPoint as images (File → Export → Images), then upload them here in order.</p>
+        {slideUrls.length === 0 && (
+          <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
+            <p className="text-sm text-muted-foreground">No slides yet. Upload PNG/JPG images of your slides.</p>
+          </div>
+        )}
+        <div className="grid grid-cols-3 gap-2">
+          {slideUrls.map((url: string, idx: number) => (
+            <div key={idx} className="relative group rounded-lg overflow-hidden border border-border bg-secondary aspect-[16/9]">
+              <img src={url} alt={`Slide ${idx + 1}`} className="w-full h-full object-contain" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                <span className="absolute top-1 left-1 text-[10px] font-bold text-white bg-black/60 rounded px-1.5 py-0.5">{idx + 1}</span>
+                {idx > 0 && (
+                  <button type="button" onClick={() => moveSlide(idx, idx - 1)} className="w-6 h-6 rounded bg-white/80 text-foreground flex items-center justify-center text-xs hover:bg-white">↑</button>
+                )}
+                {idx < slideUrls.length - 1 && (
+                  <button type="button" onClick={() => moveSlide(idx, idx + 1)} className="w-6 h-6 rounded bg-white/80 text-foreground flex items-center justify-center text-xs hover:bg-white">↓</button>
+                )}
+                <button type="button" onClick={() => removeSlide(idx)} className="w-6 h-6 rounded bg-destructive/80 text-white flex items-center justify-center text-xs hover:bg-destructive">×</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <label className="text-xs font-semibold text-foreground">Speaker Notes (one per slide, optional)</label>
+        <textarea
+          value={(config.speaker_notes || []).join("\n---\n")}
+          rows={4}
+          onChange={e => onChange({ ...config, speaker_notes: e.target.value.split("\n---\n") })}
+          placeholder={"Notes for slide 1\n---\nNotes for slide 2\n---\nNotes for slide 3"}
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 resize-none font-mono"
+        />
+      </div>
+    );
+  }
   // video_checkpoint is now handled by "video" block type above
   // Fallback: raw JSON editor for unknown types
   return (
@@ -603,6 +684,18 @@ function BlockPreview({ block }: { block: Block }) {
         {(cfg.options as string[]).map((opt, i) => (
           <div key={i} className="px-3 py-1.5 rounded-lg text-xs bg-secondary text-muted-foreground">{opt}</div>
         ))}
+      </div>
+    );
+  }
+  if (block.block_type === "slides" && Array.isArray(cfg?.slide_urls) && cfg.slide_urls.length > 0) {
+    return (
+      <div className="mt-2 grid grid-cols-4 gap-1">
+        {(cfg.slide_urls as string[]).slice(0, 8).map((url: string, i: number) => (
+          <div key={i} className="aspect-[16/9] rounded overflow-hidden bg-secondary border border-border">
+            <img src={url} alt={`Slide ${i + 1}`} className="w-full h-full object-contain" />
+          </div>
+        ))}
+        {cfg.slide_urls.length > 8 && <p className="text-[10px] text-muted-foreground col-span-4">+{cfg.slide_urls.length - 8} more slides</p>}
       </div>
     );
   }

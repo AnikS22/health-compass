@@ -1,4 +1,4 @@
-export type StepType = "video" | "concept_reveal" | "micro_challenge" | "reasoning_response" | "peer_compare" | "debate" | "collaborative_board" | "group_board" | "peer_review" | "group_challenge" | "video_checkpoint" | "poll" | "mcq" | "multi_select" | "short_answer" | "scenario" | "dilemma_tree" | "exit_ticket" | "drag_drop" | "matching" | "drawing" | "red_team";
+export type StepType = "video" | "concept_reveal" | "micro_challenge" | "reasoning_response" | "peer_compare" | "debate" | "collaborative_board" | "group_board" | "peer_review" | "group_challenge" | "video_checkpoint" | "poll" | "mcq" | "multi_select" | "short_answer" | "scenario" | "dilemma_tree" | "exit_ticket" | "drag_drop" | "matching" | "drawing" | "red_team" | "slides";
 
 export interface Hint {
   level: number;

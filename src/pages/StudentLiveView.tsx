@@ -110,6 +110,7 @@ function isInteractiveBlock(type: string, config?: Record<string, unknown>) {
 // Blocks that are display-only (no student submission needed)
 function isDisplayOnlyBlock(type: string, config?: Record<string, unknown>) {
   if (type === "concept_reveal") return true;
+  if (type === "slides") return true;
   if (type === "video" && (!config || !videoHasCheckpoints(config))) return true;
   return false;
 }
@@ -130,6 +131,7 @@ export default function StudentLiveView() {
   const [submitted, setSubmitted] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
   const [revealedResults, setRevealedResults] = useState<Record<string, unknown> | null>(null);
+  const [liveSlideIndex, setLiveSlideIndex] = useState(0);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
 
   // Mark presence on mount, clear on unmount / tab close
@@ -250,7 +252,7 @@ export default function StudentLiveView() {
         } else {
           setActiveIndex((i) => Math.min(i + 1, Math.max(steps.length - 1, 0)));
         }
-        setLocked(false); setSubmitted(false); setRevealedResults(null);
+        setLocked(false); setSubmitted(false); setRevealedResults(null); setLiveSlideIndex(0);
         break;
       case "previous_block":
         if (typeof evt.step_index === "number") {
@@ -258,7 +260,7 @@ export default function StudentLiveView() {
         } else {
           setActiveIndex((i) => Math.max(i - 1, 0));
         }
-        setLocked(false); setSubmitted(false); setRevealedResults(null);
+        setLocked(false); setSubmitted(false); setRevealedResults(null); setLiveSlideIndex(0);
         break;
       case "goto_block":
         if (typeof evt.step_index === "number") {
@@ -288,6 +290,11 @@ export default function StudentLiveView() {
               return s - 1;
             });
           }, 1000);
+        }
+        break;
+      case "navigate_slide":
+        if (typeof evt.slide_index === "number") {
+          setLiveSlideIndex(evt.slide_index);
         }
         break;
     }
@@ -529,6 +536,21 @@ export default function StudentLiveView() {
                 onComplete={() => {}}
               />
             )}
+
+            {step.block_type === "slides" && (() => {
+              const slideUrls = Array.isArray((step.config as any).slide_urls) ? (step.config as any).slide_urls as string[] : [];
+              const total = slideUrls.length;
+              if (total === 0) return <p className="text-muted-foreground text-center">No slides.</p>;
+              const safeIdx = Math.min(liveSlideIndex, total - 1);
+              return (
+                <div className="space-y-3">
+                  <div className="bg-black rounded-xl overflow-hidden aspect-[16/9] flex items-center justify-center">
+                    <img src={slideUrls[safeIdx]} alt={`Slide ${safeIdx + 1}`} className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">Slide {safeIdx + 1} of {total}</p>
+                </div>
+              );
+            })()}
 
             {step.block_type === "video" && (
               <VideoCheckpointStep
