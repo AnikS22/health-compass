@@ -67,6 +67,7 @@ export default function ProjectorView() {
         setLocked(msg.locked);
         setTimerSeconds(msg.timerSeconds);
         setTimerRunning(msg.timerRunning);
+        if (typeof msg.slideIndex === "number") setSlideIndex(msg.slideIndex);
       }
     };
 
