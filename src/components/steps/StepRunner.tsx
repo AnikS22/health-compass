@@ -275,6 +275,15 @@ export default function StepRunner({
             onComplete={(r) => handleComplete(r)}
           />
         );
+      case "slides":
+        return (
+          <SlidesStep
+            config={step.config as unknown as SlidesConfig}
+            body={step.body}
+            onComplete={() => handleComplete()}
+            isLive={isLive}
+          />
+        );
       default:
         return (
           <div className="bg-card border border-border rounded-xl p-6 text-center">

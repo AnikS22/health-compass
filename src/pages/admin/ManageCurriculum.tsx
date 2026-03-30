@@ -24,7 +24,7 @@ type Block = {
 };
 
 const BLOCK_TYPES = [
-  "video", "poll", "mcq", "multi_select", "short_answer", "scenario",
+  "video", "slides", "poll", "mcq", "multi_select", "short_answer", "scenario",
   "dilemma_tree", "drag_drop", "matching", "debate", "group_board",
   "collaborative_board", "drawing", "red_team", "exit_ticket",
   "concept_reveal", "micro_challenge", "reasoning_response", "peer_compare",
