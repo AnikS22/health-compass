@@ -622,16 +622,6 @@ export default function TeacherLiveSession() {
     broadcast("reveal_results", buildResultsPayload());
   }
 
-  // Auto-rebroadcast results as new responses arrive while results are shown
-  const prevResponseCountRef = useRef(0);
-  useEffect(() => {
-    if (!showResults || !step) return;
-    // Only rebroadcast when response count actually changes
-    if (liveResponses.length !== prevResponseCountRef.current) {
-      prevResponseCountRef.current = liveResponses.length;
-      broadcast("reveal_results", buildResultsPayload());
-    }
-  }, [showResults, liveResponses.length]);
 
   return (
     <div ref={presentationRef} className="min-h-screen bg-background flex flex-col">
