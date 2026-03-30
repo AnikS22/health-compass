@@ -274,6 +274,15 @@ export default function ManageUsers() {
           {ALL_ROLES.map((r) => (
             <option key={r.key} value={r.key}>{r.label}</option>
           ))}
+        <select
+          value={waitlistFilter}
+          onChange={(e) => setWaitlistFilter(e.target.value)}
+          className="bg-card border border-input rounded-xl px-3 py-2.5 text-sm text-foreground"
+        >
+          <option value="">All Statuses</option>
+          <option value="pending">⏳ Pending</option>
+          <option value="approved">✅ Approved</option>
+          <option value="rejected">❌ Rejected</option>
         </select>
       </div>
 
