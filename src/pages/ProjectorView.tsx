@@ -16,6 +16,7 @@ type PresenterMessage = {
   locked: boolean;
   timerSeconds: number | null;
   timerRunning: boolean;
+  slideIndex?: number;
 };
 
 function getBlockIcon(type: string) {
