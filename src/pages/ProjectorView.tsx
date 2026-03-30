@@ -50,6 +50,7 @@ export default function ProjectorView() {
   const [liveResponses, setLiveResponses] = useState<LiveResponse[]>([]);
   const [participantNames, setParticipantNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [liveSlideIndex, setLiveSlideIndex] = useState(0);
   const channelRef = useRef<BroadcastChannel | null>(null);
 
   // Listen for sync messages from teacher window
