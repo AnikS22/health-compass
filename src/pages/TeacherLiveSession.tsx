@@ -223,7 +223,7 @@ export default function TeacherLiveSession() {
     }
   }, [showResults, liveResponses.length, started, currentStep, steps]);
 
-
+  useEffect(() => {
     if (!sessionId) return;
     loadSession();
   }, [sessionId]);
