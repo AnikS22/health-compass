@@ -46,8 +46,18 @@ export default function TeacherLoginPage() {
       setStatus(`Sign up failed: ${error.message}`);
       return;
     }
-    setStatus(data.session ? "Teacher account created and signed in." : "Teacher account created. Confirm email then sign in.");
-    if (data.session) router.push("/");
+    if (data.session) {
+      setStatus("Teacher account created and signed in.");
+      router.push("/");
+      return;
+    }
+    // Auto sign-in since email verification is disabled
+    const { error: signInErr } = await teacherSupabase!.auth.signInWithPassword({ email, password });
+    if (!signInErr) {
+      router.push("/");
+      return;
+    }
+    setStatus("Account created. Please sign in.");
   }
 
   return (
