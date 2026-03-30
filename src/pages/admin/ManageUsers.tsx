@@ -156,7 +156,15 @@ export default function ManageUsers() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">Manage Users</h1>
-          <p className="text-sm text-muted-foreground">Create accounts, assign roles and organizations</p>
+          <p className="text-sm text-muted-foreground">
+            Create accounts, assign roles and organizations
+            {pendingCount > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-xs font-bold">
+                <Clock className="w-3 h-3" />
+                {pendingCount} pending
+              </span>
+            )}
+          </p>
         </div>
         <button
           onClick={() => setShowCreate(!showCreate)}
