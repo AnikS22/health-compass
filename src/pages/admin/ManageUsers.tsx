@@ -304,7 +304,7 @@ export default function ManageUsers() {
             </thead>
             <tbody>
               {filtered.map((u) => (
-                <UserRowComponent key={u.id} u={u} orgs={orgs} toggleRole={toggleRole} assignOrg={assignOrg} toggleActive={toggleActive} setSelfPaced={setSelfPaced} />
+                <UserRowComponent key={u.id} u={u} orgs={orgs} toggleRole={toggleRole} assignOrg={assignOrg} toggleActive={toggleActive} setSelfPaced={setSelfPaced} updateWaitlistStatus={updateWaitlistStatus} />
               ))}
               {filtered.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No users found</td></tr>
