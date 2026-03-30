@@ -35,6 +35,7 @@ function getBlockIcon(type: string) {
     case "matching": return "🔗";
     case "drawing": return "🎨";
     case "red_team": return "🔴";
+    case "slides": return "📑";
     case "group_challenge": return "🏆";
     case "peer_review": return "📖";
     default: return "📝";
