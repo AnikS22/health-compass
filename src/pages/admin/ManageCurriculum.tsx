@@ -522,16 +522,59 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
   }
   if (blockType === "slides") {
     const slideUrls: string[] = Array.isArray(config.slide_urls) ? config.slide_urls : [];
-    let uploadingFlag = false;
+    const [pptxProcessing, setPptxProcessing] = useState(false);
     
+    async function extractPptxSlides(file: File): Promise<string[]> {
+      const JSZip = (await import("jszip")).default;
+      const zip = await JSZip.loadAsync(file);
+      const imageFiles: { name: string; entry: any }[] = [];
+      zip.forEach((path, entry) => {
+        if (path.startsWith("ppt/media/") && /\.(png|jpg|jpeg|gif|bmp|emf|wmf|tiff?)$/i.test(path)) {
+          imageFiles.push({ name: path, entry });
+        }
+      });
+      // Sort by filename to maintain slide order
+      imageFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      const urls: string[] = [];
+      for (let i = 0; i < imageFiles.length; i++) {
+        const blob = await imageFiles[i].entry.async("blob");
+        const ext = imageFiles[i].name.split(".").pop() || "png";
+        const storagePath = `slides/${Date.now()}-pptx-${i}.${ext}`;
+        const { error } = await supabase.storage.from("slide-images").upload(storagePath, blob, { upsert: true, contentType: `image/${ext === "jpg" ? "jpeg" : ext}` });
+        if (!error) {
+          const { data: urlData } = supabase.storage.from("slide-images").getPublicUrl(storagePath);
+          urls.push(urlData.publicUrl);
+        }
+      }
+      return urls;
+    }
+
     async function handleSlideUpload(e: React.ChangeEvent<HTMLInputElement>) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
-      const btn = e.target.parentElement;
-      if (btn) btn.textContent = "Uploading...";
       const newUrls: string[] = [...slideUrls];
+      
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        // Handle .pptx files
+        if (file.name.toLowerCase().endsWith(".pptx")) {
+          setPptxProcessing(true);
+          try {
+            const extracted = await extractPptxSlides(file);
+            if (extracted.length > 0) {
+              newUrls.push(...extracted);
+            } else {
+              alert("No slide images found in PPTX. Try exporting your slides as images instead (File → Export → Images in PowerPoint).");
+            }
+          } catch (err) {
+            console.error("PPTX parse error:", err);
+            alert("Could not process PPTX file. Please export your slides as images instead.");
+          } finally {
+            setPptxProcessing(false);
+          }
+          continue;
+        }
+        // Handle regular image files
         const ext = file.name.split(".").pop() || "png";
         const path = `slides/${Date.now()}-${i}.${ext}`;
         const { error } = await supabase.storage.from("slide-images").upload(path, file, { upsert: true });
