@@ -51,7 +51,7 @@ export default function ManageUsers() {
 
     const { data: usersData } = await supabase
       .from("users")
-      .select("id, display_name, email, is_active, organization_id")
+      .select("id, display_name, email, is_active, organization_id, waitlist_status")
       .order("display_name");
 
     setUsers(
