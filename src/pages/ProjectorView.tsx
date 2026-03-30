@@ -702,7 +702,34 @@ export default function ProjectorView() {
               </div>
             )}
 
-            {/* FALLBACK for unhandled block types */}
+            {/* SLIDES */}
+            {step.block_type === "slides" && (() => {
+              const slideImages = (config.slide_urls ?? config.slides ?? []) as string[];
+              const idx = Math.min(liveSlideIndex, Math.max(slideImages.length - 1, 0));
+              return (
+                <div className="space-y-4">
+                  {slideImages.length > 0 ? (
+                    <div className="rounded-2xl overflow-hidden border border-border bg-muted/50 aspect-video max-w-5xl mx-auto flex items-center justify-center">
+                      <img
+                        src={slideImages[idx]}
+                        alt={`Slide ${idx + 1}`}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-16">
+                      <span className="text-muted-foreground text-2xl">No slides uploaded</span>
+                    </div>
+                  )}
+                  {slideImages.length > 1 && (
+                    <p className="text-center text-muted-foreground text-lg font-medium">
+                      Slide {idx + 1} of {slideImages.length}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
             {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare",
               "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board",
               "group_board", "scenario", "dilemma_tree", "drag_drop", "matching", "drawing",
