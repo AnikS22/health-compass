@@ -70,7 +70,13 @@ export default function LoginPage() {
       return;
     }
 
-    setStatus("Account created. Check your email to confirm, then sign in.");
+    // Auto sign-in since email verification is disabled
+    const { error: signInErr } = await supabase!.auth.signInWithPassword({ email, password });
+    if (!signInErr) {
+      router.push("/dashboard");
+      return;
+    }
+    setStatus("Account created. Please sign in.");
   }
 
   return (

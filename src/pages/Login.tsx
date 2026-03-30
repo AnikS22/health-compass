@@ -71,20 +71,24 @@ export default function Login() {
         setLoading(false);
         return;
       }
+      // If independent, update the flag after trigger fires
+      if (isIndependent && data.user) {
+        setTimeout(async () => {
+          const { data: appUser } = await supabase
+            .from("users").select("id").eq("auth_user_id", data.user!.id).single();
+          if (appUser) {
+            await supabase.from("users").update({ is_independent: true } as any).eq("id", appUser.id);
+          }
+        }, 1000);
+      }
       if (data.session) {
-        // If independent, update the flag after trigger fires
-        if (isIndependent && data.user) {
-          setTimeout(async () => {
-            const { data: appUser } = await supabase
-              .from("users").select("id").eq("auth_user_id", data.user!.id).single();
-            if (appUser) {
-              await supabase.from("users").update({ is_independent: true } as any).eq("id", appUser.id);
-            }
-          }, 1000);
-        }
         navigate("/");
       } else {
-        setStatus("Check your email to confirm your account.");
+        setStatus("Account created. Signing you in…");
+        // Auto sign-in since email verification is disabled
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (!signInErr) navigate("/");
+        else setStatus(signInErr.message);
       }
     }
     setLoading(false);
