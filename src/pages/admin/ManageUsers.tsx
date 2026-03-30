@@ -11,6 +11,7 @@ interface UserRow {
   organization_id: string | null;
   roles: string[];
   org_name?: string;
+  waitlist_status: string;
 }
 
 const ALL_ROLES = [
