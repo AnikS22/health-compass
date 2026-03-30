@@ -687,6 +687,18 @@ function BlockPreview({ block }: { block: Block }) {
       </div>
     );
   }
+  if (block.block_type === "slides" && Array.isArray(cfg?.slide_urls) && cfg.slide_urls.length > 0) {
+    return (
+      <div className="mt-2 grid grid-cols-4 gap-1">
+        {(cfg.slide_urls as string[]).slice(0, 8).map((url: string, i: number) => (
+          <div key={i} className="aspect-[16/9] rounded overflow-hidden bg-secondary border border-border">
+            <img src={url} alt={`Slide ${i + 1}`} className="w-full h-full object-contain" />
+          </div>
+        ))}
+        {cfg.slide_urls.length > 8 && <p className="text-[10px] text-muted-foreground col-span-4">+{cfg.slide_urls.length - 8} more slides</p>}
+      </div>
+    );
+  }
   // video_checkpoint preview handled by "video" block above
   return null;
 }
