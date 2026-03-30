@@ -523,7 +523,6 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
   }
   if (blockType === "slides") {
     const slideUrls: string[] = Array.isArray(config.slide_urls) ? config.slide_urls : [];
-    const [pptxProcessing, setPptxProcessing] = useState(false);
     
     async function extractPptxSlides(file: File): Promise<string[]> {
       const JSZip = (await import("jszip")).default;
