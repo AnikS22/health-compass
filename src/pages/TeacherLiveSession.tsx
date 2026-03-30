@@ -83,6 +83,7 @@ export default function TeacherLiveSession() {
   const broadcastRef = useRef<RealtimeChannel | null>(null);
   const presenterChannelRef = useRef<BroadcastChannel | null>(null);
   const [speakerNotes, setSpeakerNotes] = useState("");
+  const [liveSlideIndex, setLiveSlideIndex] = useState(0);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [collectData, setCollectData] = useState(true);
   const [showEndModal, setShowEndModal] = useState(false);
