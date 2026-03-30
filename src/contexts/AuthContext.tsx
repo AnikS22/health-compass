@@ -39,11 +39,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [appUserId, setAppUserId] = useState<string | null>(null);
+  const [waitlistStatus, setWaitlistStatus] = useState<string | null>(null);
 
   async function loadProfile(authUser: User) {
     const { data: userData } = await supabase
       .from("users")
-      .select("id")
+      .select("id, waitlist_status")
       .eq("auth_user_id", authUser.id)
       .maybeSingle();
 
