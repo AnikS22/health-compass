@@ -16,6 +16,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
