@@ -74,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
           setRoles([]);
           setAppUserId(null);
+          setWaitlistStatus(null);
           setLoading(false);
         }
       }
