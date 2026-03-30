@@ -16,7 +16,6 @@ type PresenterMessage = {
   locked: boolean;
   timerSeconds: number | null;
   timerRunning: boolean;
-  liveSlideIndex?: number;
 };
 
 function getBlockIcon(type: string) {
@@ -27,7 +26,7 @@ function getBlockIcon(type: string) {
     case "dilemma_tree": return "🌳"; case "collaborative_board": case "group_board": return "📋";
     case "short_answer": return "📝"; case "drag_drop": return "🎯"; case "matching": return "🔗";
     case "drawing": return "🎨"; case "red_team": return "🔴"; case "group_challenge": return "🏆";
-    case "peer_review": return "📖"; case "slides": return "📑"; default: return "📝";
+    case "peer_review": return "📖"; default: return "📝";
   }
 }
 
@@ -50,7 +49,6 @@ export default function ProjectorView() {
   const [liveResponses, setLiveResponses] = useState<LiveResponse[]>([]);
   const [participantNames, setParticipantNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [liveSlideIndex, setLiveSlideIndex] = useState(0);
   const channelRef = useRef<BroadcastChannel | null>(null);
 
   // Listen for sync messages from teacher window
@@ -67,7 +65,6 @@ export default function ProjectorView() {
         setLocked(msg.locked);
         setTimerSeconds(msg.timerSeconds);
         setTimerRunning(msg.timerRunning);
-        if (typeof msg.liveSlideIndex === "number") setLiveSlideIndex(msg.liveSlideIndex);
       }
     };
 
@@ -702,38 +699,11 @@ export default function ProjectorView() {
               </div>
             )}
 
-            {/* SLIDES */}
-            {step.block_type === "slides" && (() => {
-              const slideImages = (config.slide_urls ?? config.slides ?? []) as string[];
-              const idx = Math.min(liveSlideIndex, Math.max(slideImages.length - 1, 0));
-              return (
-                <div className="space-y-4">
-                  {slideImages.length > 0 ? (
-                    <div className="rounded-2xl overflow-hidden border border-border bg-muted/50 aspect-video max-w-5xl mx-auto flex items-center justify-center">
-                      <img
-                        src={slideImages[idx]}
-                        alt={`Slide ${idx + 1}`}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center py-16">
-                      <span className="text-muted-foreground text-2xl">No slides uploaded</span>
-                    </div>
-                  )}
-                  {slideImages.length > 1 && (
-                    <p className="text-center text-muted-foreground text-lg font-medium">
-                      Slide {idx + 1} of {slideImages.length}
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
-
+            {/* FALLBACK for unhandled block types */}
             {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare",
               "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board",
               "group_board", "scenario", "dilemma_tree", "drag_drop", "matching", "drawing",
-              "red_team", "group_challenge", "peer_review", "slides"].includes(step.block_type) && (
+              "red_team", "group_challenge", "peer_review"].includes(step.block_type) && (
               <div className="rounded-3xl border border-border bg-muted/50 p-10 text-center space-y-4">
                 <span className="text-6xl">{getBlockIcon(step.block_type)}</span>
                 <p className="text-2xl font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>
