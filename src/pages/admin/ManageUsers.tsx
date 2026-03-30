@@ -55,8 +55,9 @@ export default function ManageUsers() {
       .order("display_name");
 
     setUsers(
-      (usersData ?? []).map((u) => ({
+      (usersData ?? []).map((u: any) => ({
         ...u,
+        waitlist_status: u.waitlist_status ?? 'approved',
         roles: roleMap.get(u.id) || [],
         org_name: u.organization_id ? orgMap.get(u.organization_id) ?? "—" : "Unassigned",
       }))
