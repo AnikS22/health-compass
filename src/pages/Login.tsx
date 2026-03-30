@@ -70,6 +70,17 @@ export default function Login() {
         }
       }, 1000);
     }
+
+    // Send waitlist confirmation email
+    await supabase.functions.invoke("send-transactional-email", {
+      body: {
+        templateName: "waitlist-confirmation",
+        recipientEmail: email,
+        idempotencyKey: `waitlist-confirm-${data.user?.id ?? email}`,
+        templateData: { name: name || undefined },
+      },
+    });
+
     setWaitlistSubmitted(true);
     setLoading(false);
   };
