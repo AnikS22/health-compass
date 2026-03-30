@@ -39,8 +39,6 @@ export default function Login() {
     setLoading(false);
   };
 
-  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
-
   const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
