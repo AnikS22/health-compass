@@ -521,7 +521,7 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
   }
   if (blockType === "slides") {
     const slideUrls: string[] = Array.isArray(config.slide_urls) ? config.slide_urls : [];
-    const [uploading, setUploading] = useState(false);
+    let uploadingFlag = false;
     
     async function handleSlideUpload(e: React.ChangeEvent<HTMLInputElement>) {
       const files = e.target.files;
