@@ -33,6 +33,8 @@ import DrawingStep from "./DrawingStep";
 import type { DrawingConfig } from "./DrawingStep";
 import RedTeamStep from "./RedTeamStep";
 import type { RedTeamConfig } from "./RedTeamStep";
+import SlidesStep from "./SlidesStep";
+import type { SlidesConfig } from "./SlidesStep";
 import type {
   StepBlock,
   StepResponse,
