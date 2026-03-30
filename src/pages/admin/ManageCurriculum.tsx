@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   BookOpen, ChevronRight, Plus, Trash2, Save, X, Play,
   Layers, FileText, Video, HelpCircle, MessageSquare,
-  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle, Upload, Download
+  ChevronDown, ChevronUp, Edit2, Eye, GripVertical, Loader2, AlertTriangle, Upload, Download, Presentation
 } from "lucide-react";
 import { downloadAIReference } from "@/lib/aiBlockReference";
 
