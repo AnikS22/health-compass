@@ -59,6 +59,7 @@ function YouTubeEmbed({ url }: { url: string }) {
 
 /* ── Block Config Editor: renders type-specific fields ── */
 function BlockConfigEditor({ blockType, config, onChange }: { blockType: string; config: any; onChange: (c: any) => void }) {
+  const [pptxProcessing, setPptxProcessing] = useState(false);
   if (blockType === "video") {
     const checkpoints = Array.isArray(config.checkpoints) ? config.checkpoints : [];
     const CHECKPOINT_BLOCK_TYPES = BLOCK_TYPES.filter(t => t !== "video");
@@ -522,16 +523,58 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
   }
   if (blockType === "slides") {
     const slideUrls: string[] = Array.isArray(config.slide_urls) ? config.slide_urls : [];
-    let uploadingFlag = false;
     
+    async function extractPptxSlides(file: File): Promise<string[]> {
+      const JSZip = (await import("jszip")).default;
+      const zip = await JSZip.loadAsync(file);
+      const imageFiles: { name: string; entry: any }[] = [];
+      zip.forEach((path, entry) => {
+        if (path.startsWith("ppt/media/") && /\.(png|jpg|jpeg|gif|bmp|emf|wmf|tiff?)$/i.test(path)) {
+          imageFiles.push({ name: path, entry });
+        }
+      });
+      // Sort by filename to maintain slide order
+      imageFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      const urls: string[] = [];
+      for (let i = 0; i < imageFiles.length; i++) {
+        const blob = await imageFiles[i].entry.async("blob");
+        const ext = imageFiles[i].name.split(".").pop() || "png";
+        const storagePath = `slides/${Date.now()}-pptx-${i}.${ext}`;
+        const { error } = await supabase.storage.from("slide-images").upload(storagePath, blob, { upsert: true, contentType: `image/${ext === "jpg" ? "jpeg" : ext}` });
+        if (!error) {
+          const { data: urlData } = supabase.storage.from("slide-images").getPublicUrl(storagePath);
+          urls.push(urlData.publicUrl);
+        }
+      }
+      return urls;
+    }
+
     async function handleSlideUpload(e: React.ChangeEvent<HTMLInputElement>) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
-      const btn = e.target.parentElement;
-      if (btn) btn.textContent = "Uploading...";
       const newUrls: string[] = [...slideUrls];
+      
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        // Handle .pptx files
+        if (file.name.toLowerCase().endsWith(".pptx")) {
+          setPptxProcessing(true);
+          try {
+            const extracted = await extractPptxSlides(file);
+            if (extracted.length > 0) {
+              newUrls.push(...extracted);
+            } else {
+              alert("No slide images found in PPTX. Try exporting your slides as images instead (File → Export → Images in PowerPoint).");
+            }
+          } catch (err) {
+            console.error("PPTX parse error:", err);
+            alert("Could not process PPTX file. Please export your slides as images instead.");
+          } finally {
+            setPptxProcessing(false);
+          }
+          continue;
+        }
+        // Handle regular image files
         const ext = file.name.split(".").pop() || "png";
         const path = `slides/${Date.now()}-${i}.${ext}`;
         const { error } = await supabase.storage.from("slide-images").upload(path, file, { upsert: true });
@@ -561,12 +604,16 @@ function BlockConfigEditor({ blockType, config, onChange }: { blockType: string;
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-foreground">Slide Images ({slideUrls.length})</label>
-          <label className="text-xs text-primary hover:underline font-medium cursor-pointer">
-            + Upload Slides
-            <input type="file" accept="image/*" multiple className="hidden" onChange={handleSlideUpload} />
-          </label>
+          {pptxProcessing ? (
+            <span className="text-xs text-muted-foreground font-medium animate-pulse">Processing PPTX...</span>
+          ) : (
+            <label className="text-xs text-primary hover:underline font-medium cursor-pointer">
+              + Upload Slides
+              <input type="file" accept="image/*,.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple className="hidden" onChange={handleSlideUpload} />
+            </label>
+          )}
         </div>
-        <p className="text-[10px] text-muted-foreground">Export your PowerPoint as images (File → Export → Images), then upload them here in order.</p>
+        <p className="text-[10px] text-muted-foreground">Upload a .pptx file directly or export slides as images (PNG/JPG) and upload them in order.</p>
         {slideUrls.length === 0 && (
           <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
             <p className="text-sm text-muted-foreground">No slides yet. Upload PNG/JPG images of your slides.</p>
