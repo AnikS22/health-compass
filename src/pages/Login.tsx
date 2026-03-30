@@ -38,6 +38,43 @@ export default function Login() {
     setLoading(false);
   };
 
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setStatus("");
+    // Just store their email in a lightweight way — create account with pending status
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name || "User",
+          role: "student",
+          is_independent: true,
+        },
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      setStatus(error.message);
+      setLoading(false);
+      return;
+    }
+    if (data.user) {
+      setTimeout(async () => {
+        const { data: appUser } = await supabase
+          .from("users").select("id").eq("auth_user_id", data.user!.id).single();
+        if (appUser) {
+          await supabase.from("users").update({ is_independent: true } as any).eq("id", appUser.id);
+        }
+      }, 1000);
+    }
+    setWaitlistSubmitted(true);
+    setLoading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -52,8 +89,7 @@ export default function Login() {
       }
       navigate("/");
     } else {
-      const isIndependent = studentType === "independent";
-
+      // School student signup
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -61,7 +97,7 @@ export default function Login() {
           data: {
             full_name: name || "User",
             role: "student",
-            is_independent: isIndependent,
+            is_independent: false,
           },
           emailRedirectTo: window.location.origin,
         },
@@ -70,16 +106,6 @@ export default function Login() {
         setStatus(error.message);
         setLoading(false);
         return;
-      }
-      // If independent, update the flag after trigger fires
-      if (isIndependent && data.user) {
-        setTimeout(async () => {
-          const { data: appUser } = await supabase
-            .from("users").select("id").eq("auth_user_id", data.user!.id).single();
-          if (appUser) {
-            await supabase.from("users").update({ is_independent: true } as any).eq("id", appUser.id);
-          }
-        }, 1000);
       }
       if (data.session) {
         navigate("/waitlist");
