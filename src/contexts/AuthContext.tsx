@@ -28,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   roles: [],
   appUserId: null,
+  waitlistStatus: null,
   signOut: async () => {},
 });
 
