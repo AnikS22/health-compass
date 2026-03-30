@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (userData) {
       setAppUserId(userData.id);
+      setWaitlistStatus((userData as any).waitlist_status ?? null);
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role_key")
