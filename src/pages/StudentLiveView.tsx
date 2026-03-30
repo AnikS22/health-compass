@@ -131,6 +131,7 @@ export default function StudentLiveView() {
   const [submitted, setSubmitted] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
   const [revealedResults, setRevealedResults] = useState<Record<string, unknown> | null>(null);
+  const [liveSlideIndex, setLiveSlideIndex] = useState(0);
   const broadcastRef = useRef<RealtimeChannel | null>(null);
 
   // Mark presence on mount, clear on unmount / tab close
