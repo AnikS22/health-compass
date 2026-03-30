@@ -537,6 +537,21 @@ export default function StudentLiveView() {
               />
             )}
 
+            {step.block_type === "slides" && (() => {
+              const slideUrls = Array.isArray((step.config as any).slide_urls) ? (step.config as any).slide_urls as string[] : [];
+              const total = slideUrls.length;
+              if (total === 0) return <p className="text-muted-foreground text-center">No slides.</p>;
+              const safeIdx = Math.min(liveSlideIndex, total - 1);
+              return (
+                <div className="space-y-3">
+                  <div className="bg-black rounded-xl overflow-hidden aspect-[16/9] flex items-center justify-center">
+                    <img src={slideUrls[safeIdx]} alt={`Slide ${safeIdx + 1}`} className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">Slide {safeIdx + 1} of {total}</p>
+                </div>
+              );
+            })()}
+
             {step.block_type === "video" && (
               <VideoCheckpointStep
                 config={step.config as unknown as VideoCheckpointConfig}
