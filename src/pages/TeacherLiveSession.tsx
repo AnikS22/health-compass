@@ -215,7 +215,15 @@ export default function TeacherLiveSession() {
     return () => window.removeEventListener("keydown", onKey);
   }, [started, steps.length, currentStep, locked, isFullscreen]);
 
+  // Auto-rebroadcast results as new responses arrive while results are shown
   useEffect(() => {
+    if (!showResults || !started || !steps[currentStep]) return;
+    if (liveResponses.length !== prevResponseCountRef.current) {
+      prevResponseCountRef.current = liveResponses.length;
+    }
+  }, [showResults, liveResponses.length, started, currentStep, steps]);
+
+
     if (!sessionId) return;
     loadSession();
   }, [sessionId]);
