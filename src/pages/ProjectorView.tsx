@@ -27,7 +27,7 @@ function getBlockIcon(type: string) {
     case "dilemma_tree": return "🌳"; case "collaborative_board": case "group_board": return "📋";
     case "short_answer": return "📝"; case "drag_drop": return "🎯"; case "matching": return "🔗";
     case "drawing": return "🎨"; case "red_team": return "🔴"; case "group_challenge": return "🏆";
-    case "peer_review": return "📖"; default: return "📝";
+    case "peer_review": return "📖"; case "slides": return "📑"; default: return "📝";
   }
 }
 
