@@ -149,9 +149,43 @@ export default function Login() {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "signup" && (
-            <>
+        {mode === "signup" && !studentType && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">How are you learning?</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setStudentType("school")}
+                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-card hover:border-primary/30 transition-all">
+                  <School className="w-6 h-6 text-muted-foreground" />
+                  <span className="text-xs font-bold text-muted-foreground">With a School</span>
+                  <span className="text-[10px] text-muted-foreground text-center">Your teacher will give you a class code</span>
+                </button>
+                <button type="button" onClick={() => setStudentType("independent")}
+                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-card hover:border-primary/30 transition-all">
+                  <BookOpen className="w-6 h-6 text-muted-foreground" />
+                  <span className="text-xs font-bold text-muted-foreground">Independent</span>
+                  <span className="text-[10px] text-muted-foreground text-center">Learn at your own pace</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mode === "signup" && studentType === "independent" && !waitlistSubmitted && (
+          <div className="space-y-4">
+            <button type="button" onClick={() => setStudentType(null)} className="text-sm text-primary hover:underline font-medium">
+              ← Back
+            </button>
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-3 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 mx-auto flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Independent Learning Waitlist</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                We're rolling out independent learning in waves. Enter your details below and we'll notify you when your spot is ready!
+              </p>
+            </div>
+            <form onSubmit={handleWaitlistSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-1.5">Name</label>
                 <div className="relative">
@@ -161,48 +195,111 @@ export default function Login() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">How are you learning?</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setStudentType("school")}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${studentType === "school" ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/30"}`}>
-                    <School className={`w-6 h-6 ${studentType === "school" ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={`text-xs font-bold ${studentType === "school" ? "text-foreground" : "text-muted-foreground"}`}>With a School</span>
-                    <span className="text-[10px] text-muted-foreground text-center">Your teacher will give you a class code</span>
-                  </button>
-                  <button type="button" onClick={() => setStudentType("independent")}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${studentType === "independent" ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/30"}`}>
-                    <BookOpen className={`w-6 h-6 ${studentType === "independent" ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={`text-xs font-bold ${studentType === "independent" ? "text-foreground" : "text-muted-foreground"}`}>Independent</span>
-                    <span className="text-[10px] text-muted-foreground text-center">Learn at your own pace</span>
-                  </button>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="you@email.com" required
+                    className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
                 </div>
               </div>
-            </>
-          )}
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••" required minLength={6}
+                    className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
+                </div>
+              </div>
+              <button type="submit" disabled={loading}
+                className="w-full py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm">
+                {loading ? "Please wait…" : "Join the Waitlist"}
+              </button>
+            </form>
+          </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-semibold text-foreground mb-1.5">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@school.edu" required
-                className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
+        {mode === "signup" && studentType === "independent" && waitlistSubmitted && (
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 mx-auto flex items-center justify-center">
+              <span className="text-2xl">🎉</span>
             </div>
+            <h3 className="text-lg font-bold text-foreground">You're on the list!</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              We've added you to the waitlist. We'll send you an email at <span className="font-medium text-foreground">{email}</span> when your spot is ready.
+            </p>
+            <button type="button" onClick={() => { setMode("signin"); setStudentType(null); setWaitlistSubmitted(false); }}
+              className="text-sm text-primary hover:underline font-medium">
+              Back to Sign In
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-foreground mb-1.5">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" required minLength={6}
-                className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
+        )}
+
+        {mode === "signup" && studentType === "school" && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <button type="button" onClick={() => setStudentType(null)} className="text-sm text-primary hover:underline font-medium">
+              ← Back
+            </button>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Name</label>
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
+                  className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
+              </div>
             </div>
-          </div>
-          <button type="submit" disabled={loading || (mode === "signup" && !studentType)}
-            className="w-full py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm">
-            {loading ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"}
-          </button>
-        </form>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="you@school.edu" required
+                  className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••" required minLength={6}
+                  className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
+              </div>
+            </div>
+            <button type="submit" disabled={loading}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm">
+              {loading ? "Please wait…" : "Create Account"}
+            </button>
+          </form>
+        )}
+
+        {mode === "signin" && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="you@school.edu" required
+                  className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••" required minLength={6}
+                  className="w-full pl-10 pr-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary transition-all" />
+              </div>
+            </div>
+            <button type="submit" disabled={loading}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm">
+              {loading ? "Please wait…" : "Sign In"}
+            </button>
+          </form>
+        )}
 
         {mode === "signin" && !forgotMode && (
           <button type="button" onClick={() => setForgotMode(true)}
