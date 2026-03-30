@@ -252,7 +252,7 @@ export default function StudentLiveView() {
         } else {
           setActiveIndex((i) => Math.min(i + 1, Math.max(steps.length - 1, 0)));
         }
-        setLocked(false); setSubmitted(false); setRevealedResults(null);
+        setLocked(false); setSubmitted(false); setRevealedResults(null); setLiveSlideIndex(0);
         break;
       case "previous_block":
         if (typeof evt.step_index === "number") {
