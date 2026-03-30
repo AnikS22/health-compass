@@ -1270,7 +1270,41 @@ export default function TeacherLiveSession() {
                 </div>
               )}
 
-              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board", "group_board", "scenario", "dilemma_tree", "drag_drop", "matching", "drawing", "red_team", "group_challenge", "peer_review"].includes(step.block_type) && (
+              {step.block_type === "slides" && (() => {
+                const slideUrls = Array.isArray((config as any).slide_urls) ? (config as any).slide_urls as string[] : [];
+                const notes = Array.isArray((config as any).speaker_notes) ? (config as any).speaker_notes as string[] : [];
+                const total = slideUrls.length;
+                if (total === 0) return <p className="text-muted-foreground text-center">No slides uploaded.</p>;
+                const safeIdx = Math.min(liveSlideIndex, total - 1);
+                return (
+                  <div className="space-y-4">
+                    <div className="relative bg-black rounded-2xl overflow-hidden aspect-[16/9] flex items-center justify-center">
+                      <img src={slideUrls[safeIdx]} alt={`Slide ${safeIdx + 1}`} className="max-w-full max-h-full object-contain" draggable={false} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => { const next = Math.max(safeIdx - 1, 0); setLiveSlideIndex(next); broadcast("navigate_slide", { slide_index: next }); }}
+                        disabled={safeIdx <= 0}
+                        className="px-4 py-2 rounded-xl bg-secondary text-foreground text-sm font-bold disabled:opacity-30"
+                      >← Prev Slide</button>
+                      <span className="text-sm font-bold text-foreground">{safeIdx + 1} / {total}</span>
+                      <button
+                        onClick={() => { const next = Math.min(safeIdx + 1, total - 1); setLiveSlideIndex(next); broadcast("navigate_slide", { slide_index: next }); }}
+                        disabled={safeIdx >= total - 1}
+                        className="px-4 py-2 rounded-xl bg-secondary text-foreground text-sm font-bold disabled:opacity-30"
+                      >Next Slide →</button>
+                    </div>
+                    {notes[safeIdx] && (
+                      <div className="rounded-xl bg-secondary/50 border border-border p-3">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Speaker Notes</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{notes[safeIdx]}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {!["video", "concept_reveal", "micro_challenge", "mcq", "reasoning_response", "peer_compare", "poll", "multi_select", "short_answer", "exit_ticket", "debate", "collaborative_board", "group_board", "scenario", "dilemma_tree", "drag_drop", "matching", "drawing", "red_team", "group_challenge", "peer_review", "slides"].includes(step.block_type) && (
                 <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
                   <span className="text-5xl">{getBlockIcon(step.block_type)}</span>
                   <p className="text-lg font-medium text-foreground capitalize">{step.block_type.replace(/_/g, " ")}</p>

@@ -292,6 +292,11 @@ export default function StudentLiveView() {
           }, 1000);
         }
         break;
+      case "navigate_slide":
+        if (typeof evt.slide_index === "number") {
+          setLiveSlideIndex(evt.slide_index);
+        }
+        break;
     }
   }
 
