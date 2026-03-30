@@ -283,6 +283,7 @@ export default function TeacherLiveSession() {
     if (currentStep >= steps.length - 1) return;
     const next = currentStep + 1;
     setCurrentStep(next);
+    setLiveSlideIndex(0);
     broadcast("next_block", { step_index: next });
     setLocked(false);
   }, [currentStep, steps.length, sessionId, appUserId]);
@@ -291,6 +292,7 @@ export default function TeacherLiveSession() {
     if (currentStep <= 0) return;
     const prev = currentStep - 1;
     setCurrentStep(prev);
+    setLiveSlideIndex(0);
     broadcast("previous_block", { step_index: prev });
     setLocked(false);
   }, [currentStep, sessionId, appUserId]);
