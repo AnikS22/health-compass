@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Search, Plus, UserCheck, UserX, Shield, ChevronDown, ChevronUp, Compass } from "lucide-react";
+import { Users, Search, Plus, UserCheck, UserX, Shield, ChevronDown, ChevronUp, Compass, Clock, CheckCircle, XCircle } from "lucide-react";
 import UserClassManager from "@/components/admin/UserClassManager";
 
 interface UserRow {
