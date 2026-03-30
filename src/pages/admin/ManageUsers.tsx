@@ -274,6 +274,7 @@ export default function ManageUsers() {
           {ALL_ROLES.map((r) => (
             <option key={r.key} value={r.key}>{r.label}</option>
           ))}
+        </select>
         <select
           value={waitlistFilter}
           onChange={(e) => setWaitlistFilter(e.target.value)}
