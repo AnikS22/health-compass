@@ -1686,6 +1686,7 @@ export type Database = {
           is_active: boolean
           organization_id: string | null
           updated_at: string
+          waitlist_status: Database["public"]["Enums"]["waitlist_status"]
         }
         Insert: {
           auth_user_id?: string | null
@@ -1696,6 +1697,7 @@ export type Database = {
           is_active?: boolean
           organization_id?: string | null
           updated_at?: string
+          waitlist_status?: Database["public"]["Enums"]["waitlist_status"]
         }
         Update: {
           auth_user_id?: string | null
@@ -1706,6 +1708,7 @@ export type Database = {
           is_active?: boolean
           organization_id?: string | null
           updated_at?: string
+          waitlist_status?: Database["public"]["Enums"]["waitlist_status"]
         }
         Relationships: [
           {
@@ -1784,6 +1787,7 @@ export type Database = {
         | "ethics_admin"
         | "curriculum_admin"
       step_status: "locked" | "unlocked" | "completed" | "retry"
+      waitlist_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1956,6 +1960,7 @@ export const Constants = {
         "curriculum_admin",
       ],
       step_status: ["locked", "unlocked", "completed", "retry"],
+      waitlist_status: ["pending", "approved", "rejected"],
     },
   },
 } as const

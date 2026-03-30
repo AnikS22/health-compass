@@ -10,6 +10,7 @@ import Assignments from "./pages/Assignments";
 import Reports from "./pages/Reports";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
+import Waitlist from "./pages/Waitlist";
 import ProjectorView from "./pages/ProjectorView";
 import NotFound from "./pages/NotFound";
 import LessonPreview from "./pages/LessonPreview";
@@ -38,6 +39,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/waitlist" element={<Waitlist />} />
         <Route path="/live/student" element={<AuthGuard><StudentLiveView /></AuthGuard>} />
         <Route path="/lesson/preview" element={<AuthGuard><LessonPreview /></AuthGuard>} />
         <Route path="/live/host" element={<AuthGuard><TeacherLiveSession /></AuthGuard>} />

@@ -82,12 +82,11 @@ export default function Login() {
         }, 1000);
       }
       if (data.session) {
-        navigate("/");
+        navigate("/waitlist");
       } else {
         setStatus("Account created. Signing you in…");
-        // Auto sign-in since email verification is disabled
         const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (!signInErr) navigate("/");
+        if (!signInErr) navigate("/waitlist");
         else setStatus(signInErr.message);
       }
     }

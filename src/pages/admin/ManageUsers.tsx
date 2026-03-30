@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Search, Plus, UserCheck, UserX, Shield, ChevronDown, ChevronUp, Compass } from "lucide-react";
+import { Users, Search, Plus, UserCheck, UserX, Shield, ChevronDown, ChevronUp, Compass, Clock, CheckCircle, XCircle } from "lucide-react";
 import UserClassManager from "@/components/admin/UserClassManager";
 
 interface UserRow {
@@ -11,6 +11,7 @@ interface UserRow {
   organization_id: string | null;
   roles: string[];
   org_name?: string;
+  waitlist_status: string;
 }
 
 const ALL_ROLES = [
@@ -27,6 +28,7 @@ export default function ManageUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [waitlistFilter, setWaitlistFilter] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -49,12 +51,13 @@ export default function ManageUsers() {
 
     const { data: usersData } = await supabase
       .from("users")
-      .select("id, display_name, email, is_active, organization_id")
+      .select("id, display_name, email, is_active, organization_id, waitlist_status")
       .order("display_name");
 
     setUsers(
-      (usersData ?? []).map((u) => ({
+      (usersData ?? []).map((u: any) => ({
         ...u,
+        waitlist_status: u.waitlist_status ?? 'approved',
         roles: roleMap.get(u.id) || [],
         org_name: u.organization_id ? orgMap.get(u.organization_id) ?? "—" : "Unassigned",
       }))
@@ -63,6 +66,11 @@ export default function ManageUsers() {
   }
 
   useEffect(() => { loadUsers(); }, []);
+
+  async function updateWaitlistStatus(userId: string, status: 'approved' | 'rejected') {
+    await supabase.from("users").update({ waitlist_status: status } as any).eq("id", userId);
+    loadUsers();
+  }
 
   async function toggleActive(u: UserRow) {
     await supabase.from("users").update({ is_active: !u.is_active }).eq("id", u.id);
@@ -137,15 +145,26 @@ export default function ManageUsers() {
       u.display_name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
     const matchRole = !roleFilter || u.roles.includes(roleFilter);
-    return matchSearch && matchRole;
+    const matchWaitlist = !waitlistFilter || u.waitlist_status === waitlistFilter;
+    return matchSearch && matchRole && matchWaitlist;
   });
+
+  const pendingCount = users.filter(u => u.waitlist_status === 'pending').length;
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">Manage Users</h1>
-          <p className="text-sm text-muted-foreground">Create accounts, assign roles and organizations</p>
+          <p className="text-sm text-muted-foreground">
+            Create accounts, assign roles and organizations
+            {pendingCount > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-xs font-bold">
+                <Clock className="w-3 h-3" />
+                {pendingCount} pending
+              </span>
+            )}
+          </p>
         </div>
         <button
           onClick={() => setShowCreate(!showCreate)}
@@ -256,6 +275,16 @@ export default function ManageUsers() {
             <option key={r.key} value={r.key}>{r.label}</option>
           ))}
         </select>
+        <select
+          value={waitlistFilter}
+          onChange={(e) => setWaitlistFilter(e.target.value)}
+          className="bg-card border border-input rounded-xl px-3 py-2.5 text-sm text-foreground"
+        >
+          <option value="">All Statuses</option>
+          <option value="pending">⏳ Pending</option>
+          <option value="approved">✅ Approved</option>
+          <option value="rejected">❌ Rejected</option>
+        </select>
       </div>
 
       {/* Users Table */}
@@ -276,7 +305,7 @@ export default function ManageUsers() {
             </thead>
             <tbody>
               {filtered.map((u) => (
-                <UserRowComponent key={u.id} u={u} orgs={orgs} toggleRole={toggleRole} assignOrg={assignOrg} toggleActive={toggleActive} setSelfPaced={setSelfPaced} />
+                <UserRowComponent key={u.id} u={u} orgs={orgs} toggleRole={toggleRole} assignOrg={assignOrg} toggleActive={toggleActive} setSelfPaced={setSelfPaced} updateWaitlistStatus={updateWaitlistStatus} />
               ))}
               {filtered.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No users found</td></tr>
@@ -288,13 +317,14 @@ export default function ManageUsers() {
     </div>
   );
 }
-function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSelfPaced }: {
+function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSelfPaced, updateWaitlistStatus }: {
   u: UserRow;
   orgs: { id: string; name: string }[];
   toggleRole: (userId: string, roleKey: string, hasRole: boolean) => void;
   assignOrg: (userId: string, orgId: string) => void;
   toggleActive: (u: UserRow) => void;
   setSelfPaced: (userId: string) => void;
+  updateWaitlistStatus: (userId: string, status: 'approved' | 'rejected') => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -348,9 +378,19 @@ function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSel
         </td>
         <td className="px-4 py-3">
           <div className="flex flex-col gap-1">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
-              {u.is_active ? "Active" : "Inactive"}
-            </span>
+            {u.waitlist_status === 'pending' ? (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-amber-500/10 text-amber-600">
+                <Clock className="w-3 h-3" /> Waitlisted
+              </span>
+            ) : u.waitlist_status === 'rejected' ? (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium w-fit bg-destructive/10 text-destructive">
+                <XCircle className="w-3 h-3" /> Rejected
+              </span>
+            ) : (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit ${u.is_active ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
+                {u.is_active ? "Active" : "Inactive"}
+              </span>
+            )}
             {!u.organization_id && u.roles.includes("student") && (
               <span className="flex items-center gap-1 text-[11px] font-medium text-primary">
                 <Compass className="w-3 h-3" /> Self-Paced
@@ -360,13 +400,39 @@ function UserRowComponent({ u, orgs, toggleRole, assignOrg, toggleActive, setSel
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => toggleActive(u)}
-              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-            >
-              {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
-              {u.is_active ? "Deactivate" : "Activate"}
-            </button>
+            {u.waitlist_status === 'pending' && (
+              <>
+                <button
+                  onClick={() => updateWaitlistStatus(u.id, 'approved')}
+                  className="flex items-center gap-1 text-xs font-bold text-green-600 hover:underline"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> Approve
+                </button>
+                <button
+                  onClick={() => updateWaitlistStatus(u.id, 'rejected')}
+                  className="flex items-center gap-1 text-xs font-bold text-destructive hover:underline"
+                >
+                  <XCircle className="w-3.5 h-3.5" /> Reject
+                </button>
+              </>
+            )}
+            {u.waitlist_status === 'rejected' && (
+              <button
+                onClick={() => updateWaitlistStatus(u.id, 'approved')}
+                className="flex items-center gap-1 text-xs font-bold text-green-600 hover:underline"
+              >
+                <CheckCircle className="w-3.5 h-3.5" /> Approve
+              </button>
+            )}
+            {u.waitlist_status === 'approved' && (
+              <button
+                onClick={() => toggleActive(u)}
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                {u.is_active ? "Deactivate" : "Activate"}
+              </button>
+            )}
             {/* Toggle self-paced: show "Make Self-Paced" or "Remove Self-Paced" */}
             {u.roles.includes("student") && (
               !u.organization_id ? (

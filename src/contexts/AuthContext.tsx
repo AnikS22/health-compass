@@ -17,6 +17,7 @@ interface AuthContextType {
   role: string | null;
   roles: string[];
   appUserId: string | null;
+  waitlistStatus: string | null;
   signOut: () => Promise<void>;
 }
 
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   roles: [],
   appUserId: null,
+  waitlistStatus: null,
   signOut: async () => {},
 });
 
@@ -37,16 +39,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [appUserId, setAppUserId] = useState<string | null>(null);
+  const [waitlistStatus, setWaitlistStatus] = useState<string | null>(null);
 
   async function loadProfile(authUser: User) {
     const { data: userData } = await supabase
       .from("users")
-      .select("id")
+      .select("id, waitlist_status")
       .eq("auth_user_id", authUser.id)
       .maybeSingle();
 
     if (userData) {
       setAppUserId(userData.id);
+      setWaitlistStatus((userData as any).waitlist_status ?? null);
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role_key")
@@ -70,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
           setRoles([]);
           setAppUserId(null);
+          setWaitlistStatus(null);
           setLoading(false);
         }
       }
@@ -93,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, roles, appUserId, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, roles, appUserId, waitlistStatus, signOut }}>
       {children}
     </AuthContext.Provider>
   );
